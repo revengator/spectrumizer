@@ -21,8 +21,8 @@
 <body>
 <h1>spectrumizer — demos</h1>
 <p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Most clips are
-<code>examples/ode-to-joy.mid</code> (the buzzer clips use the low-bass
-<code>examples/bass-groove.mid</code>) rendered through spectrumizer's software AY.</p>
+<code>examples/ode-to-joy.mid</code> (the buzzer clips use
+<code>examples/pachelbel-canon.mid</code>) rendered through spectrumizer's software AY.</p>
 <div class="demo">
   <h2>Faithful (3-voice reduction)</h2>
   <p>Straight reduction of the source to lead / bass / harmony.</p>
@@ -37,15 +37,15 @@
 </div>
 <div class="demo">
   <h2>Buzzer bass (pure envelope)</h2>
-  <p>An original low-bass groove. Channel B is the AY hardware envelope itself, oscillating at the note pitch with the tone off — the characteristic deep AY buzzer. Pitch is coarse, so the bass is written low where it resolves.</p>
+  <p>Pachelbel&#x27;s Canon — its ground bass voiced low. Channel B is the AY hardware envelope itself, oscillating at the note pitch with the tone off — the characteristic deep AY buzzer. Pitch is coarse, but the low ostinato resolves cleanly.</p>
   <audio controls preload="none" src="audio/buzzer.mp3"></audio>
-  <p><code>spectrumizer bass-groove.mid --style chiptune --bass envelope</code> &middot; <a href="audio/buzzer.pt3">download .pt3</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope</code> &middot; <a href="audio/buzzer.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>Buzzer bass (tone + envelope)</h2>
-  <p>The same groove with the tone kept on for exact pitch while the hardware envelope adds the buzz — pitch-accurate at any register.</p>
+  <p>The same Canon with the tone kept on for exact pitch while the hardware envelope adds the buzz — pitch-accurate at any register.</p>
   <audio controls preload="none" src="audio/buzzer-tone.mp3"></audio>
-  <p><code>spectrumizer bass-groove.mid --style chiptune --bass envelope-tone</code> &middot; <a href="audio/buzzer-tone.pt3">download .pt3</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone</code> &middot; <a href="audio/buzzer-tone.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>No dynamics</h2>

@@ -2,11 +2,11 @@
 provenance), so the MIDIs and any .pt3 spectrumizer makes from them are clean to
 redistribute:
 
-  * ode-to-joy.mid  — Beethoven's "Ode to Joy" theme (1824), public domain.
-  * bass-groove.mid — an ORIGINAL low-bass groove (© the author, MIT with the
-    rest of the repo) that showcases buzzer bass: the bass sits in octaves 1-2,
-    where the AY hardware envelope's coarse pitch still resolves into distinct
-    steps and sounds musical.
+  * ode-to-joy.mid      — Beethoven's "Ode to Joy" theme (1824), public domain.
+  * pachelbel-canon.mid — Pachelbel's Canon in D (J. Pachelbel, 1653-1706),
+    public domain. Its famous ground bass is the whole point of the piece, so
+    voiced down into octaves 1-2 it is the ideal showcase for buzzer bass: the
+    AY hardware envelope's coarse pitch still resolves the 8-note ostinato.
 
     python examples/make_example_midi.py
 """
@@ -40,32 +40,39 @@ ODE_BASS = [
     (C3, 4), (C3, 4), (C3, 4), (C3, 4),
 ]
 
-# --- Original buzzer groove (own composition) --------------------------------
-# i-VI-III-VII in A minor; the bass arpeggiates root / octave / fifth down in
-# octaves 1-2 so each step lands on a distinct AY envelope period.
-A1, A2, E2, F1, F2, C2, C1, G1, G2, D2 = 33, 45, 40, 29, 41, 36, 24, 31, 43, 38
-GROOVE_BASS = [
-    (A1, 1), (A2, 1), (E2, 1), (A2, 1),     # Am
-    (F1, 1), (F2, 1), (C2, 1), (F2, 1),     # F
-    (C2, 1), (C1, 1), (G1, 1), (C1, 1),     # C  (C1 = a deep octave-down thud)
-    (G1, 1), (G2, 1), (D2, 1), (G2, 1),     # G
-] * 2
+# --- Pachelbel's Canon in D (public domain) ----------------------------------
+# The two-bar ground bass: D - A - Bm - F#m - G - D - G - A. Voiced low (octaves
+# 1-2) so the buzzer's envelope periods stay resolvable. One cycle = 8 half notes.
+D2, A1, B1, Fs1, G1, D1 = 38, 33, 35, 30, 31, 26
+CANON_GROUND = [
+    (D2, 2), (A1, 2), (B1, 2), (Fs1, 2),
+    (G1, 2), (D1, 2), (G1, 2), (A1, 2),
+]
+CANON_BASS = CANON_GROUND * 3                  # three turns of the ostinato
 
-# Sparse lead on top so the buzzer bass stays the star.
-A4, C5, G4, D5, B4 = 69, 72, 67, 74, 71
-GROOVE_LEAD = [
-    (A4, 2), (C5, 2), (C5, 2), (A4, 2),
-    (G4, 2), (E4, 2), (D5, 2), (B4, 2),
-] * 2
+# The well-known first violin line, one cycle of half notes over each turn of
+# the ground. The melody stays above the bass throughout so the skyline reducer
+# always routes the low ground note to channel B (the buzzer).
+Fs5, E5, D5, Cs5, B4, A4 = 78, 76, 74, 73, 71, 69
+CANON_PHRASE = [
+    (Fs5, 2), (E5, 2), (D5, 2), (Cs5, 2),
+    (B4, 2), (A4, 2), (B4, 2), (Cs5, 2),
+]
+CANON_MELODY = CANON_PHRASE * 3
 
 
 def _add_voice(track, events, channel, velocity):
+    delay = 0                                  # carry rest duration to next onset
     for note, beats in events:
         ticks = int(round(beats * TPB))
+        if note is None:                       # a rest
+            delay += ticks
+            continue
         track.append(mido.Message('note_on', note=note, velocity=velocity,
-                                  channel=channel, time=0))
+                                  channel=channel, time=delay))
         track.append(mido.Message('note_off', note=note, velocity=0,
                                   channel=channel, time=ticks))
+        delay = 0
 
 
 def _build(name: str, tempo: int, melody: list, bass: list,
@@ -84,8 +91,8 @@ def main():
     here = os.path.dirname(__file__)
     files = {
         'ode-to-joy.mid': _build('Ode to Joy', 120, ODE_MELODY, ODE_BASS),
-        'bass-groove.mid': _build('Bass Groove', 132, GROOVE_LEAD, GROOVE_BASS,
-                                  mel_vel=82, bass_vel=104),
+        'pachelbel-canon.mid': _build('Canon in D', 100, CANON_MELODY, CANON_BASS,
+                                      mel_vel=88, bass_vel=104),
     }
     for fname, mid in files.items():
         out = os.path.join(here, fname)

@@ -129,8 +129,8 @@ emulator (e.g. ZEsarUX).
 Hear every mode in your browser on the **[demo page](https://revengator.github.io/spectrumizer/)**
 (GitHub Pages, nothing to install) — or click a clip to play it in GitHub's file
 viewer. Most are `examples/ode-to-joy.mid` rendered through the built-in software
-AY; the buzzer clips use the low-bass `examples/bass-groove.mid` (where envelope
-bass resolves). Regenerate with `pip install -e ".[demos]" && python examples/make_demos.py`.
+AY; the buzzer clips use `examples/pachelbel-canon.mid` (its low ground bass is
+where envelope bass shines). Regenerate with `pip install -e ".[demos]" && python examples/make_demos.py`.
 
 | Demo | What it shows |
 |---|---|

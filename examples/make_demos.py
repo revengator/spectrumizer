@@ -1,9 +1,9 @@
 """Render one demo per use-case into docs/audio/ and build the demos page.
 
 Most clips are examples/ode-to-joy.mid rendered through spectrumizer's own
-software AY (the buzzer clips use the low-bass examples/bass-groove.mid), so
-visitors can hear every mode on the GitHub Pages site (docs/index.html) in the
-browser with nothing to install. MP3s are encoded with
+software AY (the buzzer clips use examples/pachelbel-canon.mid for its low
+ground bass), so visitors can hear every mode on the GitHub Pages site
+(docs/index.html) in the browser with nothing to install. MP3s are encoded with
 `lameenc` — a pip wheel that bundles LAME, so there's no system ffmpeg needed:
 
     pip install -e ".[demos]"      # or: pip install lameenc
@@ -23,7 +23,7 @@ from spectrumizer import audio
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SRC = os.path.join(HERE, "ode-to-joy.mid")
-GROOVE = os.path.join(HERE, "bass-groove.mid")    # low bass — for the buzzer demos
+CANON = os.path.join(HERE, "pachelbel-canon.mid")   # low ground bass — buzzer demos
 OUT = os.path.join(ROOT, "docs", "audio")
 RATE = 22050     # smaller files; still well above the AY's useful bandwidth
 BITRATE = 128    # kbps; plenty for the AY's simple spectrum
@@ -39,16 +39,17 @@ DEMOS = [
      "spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune",
      dict(style="chiptune"), dict()),
     ("buzzer", "Buzzer bass (pure envelope)",
-     "An original low-bass groove. Channel B is the AY hardware envelope itself, "
-     "oscillating at the note pitch with the tone off — the characteristic deep "
-     "AY buzzer. Pitch is coarse, so the bass is written low where it resolves.",
-     "spectrumizer bass-groove.mid --style chiptune --bass envelope",
-     dict(style="chiptune", bass="envelope"), dict(), GROOVE),
+     "Pachelbel's Canon — its ground bass voiced low. Channel B is the AY "
+     "hardware envelope itself, oscillating at the note pitch with the tone off "
+     "— the characteristic deep AY buzzer. Pitch is coarse, but the low ostinato "
+     "resolves cleanly.",
+     "spectrumizer pachelbel-canon.mid --style chiptune --bass envelope",
+     dict(style="chiptune", bass="envelope"), dict(), CANON),
     ("buzzer-tone", "Buzzer bass (tone + envelope)",
-     "The same groove with the tone kept on for exact pitch while the hardware "
+     "The same Canon with the tone kept on for exact pitch while the hardware "
      "envelope adds the buzz — pitch-accurate at any register.",
-     "spectrumizer bass-groove.mid --style chiptune --bass envelope-tone",
-     dict(style="chiptune", bass="envelope-tone"), dict(), GROOVE),
+     "spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone",
+     dict(style="chiptune", bass="envelope-tone"), dict(), CANON),
     ("chiptune-flat", "No dynamics",
      "Flat per-channel volume; compare with the chiptune clip to hear the "
      "velocity-driven dynamics.",
@@ -89,8 +90,8 @@ _PAGE = """\
 <body>
 <h1>spectrumizer — demos</h1>
 <p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Most clips are
-<code>examples/ode-to-joy.mid</code> (the buzzer clips use the low-bass
-<code>examples/bass-groove.mid</code>) rendered through spectrumizer's software AY.</p>
+<code>examples/ode-to-joy.mid</code> (the buzzer clips use
+<code>examples/pachelbel-canon.mid</code>) rendered through spectrumizer's software AY.</p>
 {items}
 <footer>Regenerate with <code>python examples/make_demos.py</code>.
 See the <a href="https://github.com/revengator/spectrumizer">repository</a>.</footer>
