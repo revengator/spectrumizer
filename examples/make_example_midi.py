@@ -50,15 +50,27 @@ CANON_GROUND = [
 ]
 CANON_BASS = CANON_GROUND * 3                  # three turns of the ostinato
 
-# The well-known first violin line, one cycle of half notes over each turn of
-# the ground. The melody stays above the bass throughout so the skyline reducer
-# always routes the low ground note to channel B (the buzzer).
-Fs5, E5, D5, Cs5, B4, A4 = 78, 76, 74, 73, 71, 69
-CANON_PHRASE = [
-    (Fs5, 2), (E5, 2), (D5, 2), (Cs5, 2),
-    (B4, 2), (A4, 2), (B4, 2), (Cs5, 2),
+# Violin I as three developing variations over one turn of the ground each, in
+# the Canon's manner: the iconic half-note theme, then a quarter-note line, then
+# eighth-note arpeggios — gradually filling in. Each step uses tones of the
+# chord above it (D A Bm F#m G D G A) so the harmony is exact, and every note
+# stays above the bass so the skyline reducer keeps the ground on channel B.
+A5, Fs5, E5, D5, Cs5, B4, A4, G4, Fs4 = 81, 78, 76, 74, 73, 71, 69, 67, 66
+
+CANON_V1 = [                                            # the theme (half notes)
+    (Fs5, 2), (E5, 2), (D5, 2), (Cs5, 2), (B4, 2), (A4, 2), (B4, 2), (Cs5, 2),
 ]
-CANON_MELODY = CANON_PHRASE * 3
+CANON_V2 = [                                            # quarter notes, 2 per chord
+    (Fs5, 1), (A5, 1),  (E5, 1), (Cs5, 1),  (D5, 1), (Fs5, 1),  (Cs5, 1), (A4, 1),
+    (B4, 1),  (D5, 1),  (Fs5, 1), (A4, 1),  (B4, 1), (D5, 1),   (Cs5, 1), (E5, 1),
+]
+CANON_V3 = [                                            # eighth-note arpeggios
+    (D5, .5), (Fs5, .5), (A5, .5), (Fs5, .5),  (Cs5, .5), (E5, .5), (A5, .5), (E5, .5),
+    (B4, .5), (D5, .5),  (Fs5, .5), (D5, .5),  (Fs4, .5), (A4, .5), (Cs5, .5), (A4, .5),
+    (G4, .5), (B4, .5),  (D5, .5), (B4, .5),   (D5, .5),  (Fs5, .5), (A5, .5), (Fs5, .5),
+    (G4, .5), (B4, .5),  (D5, .5), (B4, .5),   (A4, .5),  (Cs5, .5), (E5, .5), (Cs5, .5),
+]
+CANON_MELODY = CANON_V1 + CANON_V2 + CANON_V3
 
 
 def _add_voice(track, events, channel, velocity):
