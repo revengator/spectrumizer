@@ -1,5 +1,6 @@
 # spectrumizer
 
+[![PyPI](https://img.shields.io/pypi/v/spectrumizer.svg)](https://pypi.org/project/spectrumizer/)
 [![CI](https://github.com/revengator/spectrumizer/actions/workflows/ci.yml/badge.svg)](https://github.com/revengator/spectrumizer/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
@@ -24,14 +25,15 @@ file and spectrumizer arranges it down to the AY's 3 channels (+ noise).
 ## Install
 
 ```bash
-pip install -e .            # from a clone — installs the `spectrumizer` command + deps
+pip install spectrumizer    # from PyPI — installs the `spectrumizer` / `spectrumizer-play` commands
 ```
 
-Or, without installing the package:
+Or from a clone (for development):
 
 ```bash
-python3 -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
+pip install -e .                                                    # editable install
+# ...or without installing the package:
+python3 -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 ```
 
 All deps are pure-Python (`mido`), so the same wheels work on Intel & Apple
