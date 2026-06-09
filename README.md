@@ -55,6 +55,10 @@ spectrumizer song.mid --transpose -12 --rows-per-beat 4 --speed 6 \
 # dynamics: MIDI velocity drives per-note volume (on by default)
 spectrumizer song.mid -o song.pt3 --no-dynamics      # ...or flat per-channel volume
 
+# buzzer bass: drive the bass through the AY hardware envelope
+spectrumizer song.mid --bass envelope        # pure buzzer — envelope is the oscillator (deep, coarse pitch)
+spectrumizer song.mid --bass envelope-tone   # tone keeps the pitch, envelope adds the buzz (any register)
+
 # generate and immediately hear it (renders through a software AY, then plays)
 spectrumizer song.mid -o song.pt3 --play
 ```
@@ -77,6 +81,10 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
   - `embellish` — chiptune passes (octave leads, synth drums; chord arps planned).
   - dynamics — MIDI velocity → per-note AY volume, normalised so the piece's
     loudest note hits each channel's ceiling (on by default; `--no-dynamics`).
+  - buzzer bass — `--bass envelope` routes channel B through the AY **hardware
+    envelope** at each note's pitch (the deep AY buzzer; pitch is coarse, best
+    low). `--bass envelope-tone` keeps the tone for exact pitch and uses the
+    envelope only for the buzz.
   - Channel allocation: **A = lead, B = bass, C =** real drums if present, else
     synth drums (chiptune), else harmony (faithful).
 - **`spectrumizer/ir.py`** — the source-agnostic note model both inputs target.
@@ -127,6 +135,8 @@ AY; regenerate with `pip install -e ".[demos]" && python examples/make_demos.py`
 |---|---|
 | ▶ [Faithful](docs/audio/faithful.mp3) | 3-voice reduction |
 | ▶ [Chiptune](docs/audio/chiptune.mp3) | octave lead + synth drums |
+| ▶ [Buzzer (pure)](docs/audio/buzzer.mp3) | bass = the AY hardware envelope, tone off (`--bass envelope`) |
+| ▶ [Buzzer (tone+env)](docs/audio/buzzer-tone.mp3) | envelope buzz, tone keeps the pitch (`--bass envelope-tone`) |
 | ▶ [No dynamics](docs/audio/chiptune-flat.mp3) | flat volume — vs the velocity dynamics |
 | ▶ [Equal-tempered](docs/audio/chiptune-equal.mp3) | vs the exact PT3 tone table |
 | ▶ [Mono](docs/audio/chiptune-mono.mp3) | vs the default ABC stereo |
@@ -140,13 +150,14 @@ pytest -q
 
 ## Status
 
-- **Generate:** MIDI → PT3, faithful + chiptune, with velocity-driven dynamics.
+- **Generate:** MIDI → PT3, faithful + chiptune, velocity-driven dynamics, and
+  **buzzer bass** through the AY hardware envelope (`--bass envelope` /
+  `envelope-tone`).
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
   table, real per-frame noise period, ABC panning, and the AY **hardware
   envelope generator** (`spectrumizer-play` / `--play`).
-- **Planned:** buzzer-bass generation (`--bass envelope`, routes the bass through
-  the hardware envelope at note pitch), chord arpeggios, MusicXML (music21) input,
-  PT3 slides/glissando in the audition player, raw-AY/`.vtx` export.
+- **Planned:** chord arpeggios, MusicXML (music21) input, PT3 slides/glissando in
+  the audition player, raw-AY/`.vtx` export.
 
 ## Origin
 

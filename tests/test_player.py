@@ -184,3 +184,20 @@ def test_envelope_shape_out_of_range_rejected():
     for bad in (0, 15, 16):                            # 0->NtSkip, 15->OFF token
         with pytest.raises(ValueError):
             encode_channel([('C-3', {'env': (bad, 0x0100)})])
+
+
+def test_mixer_negative_logic_matches_real_player():
+    from spectrumizer.pt3.player import _mixer
+    assert _mixer(0x80) == (True, False)               # tone only
+    assert _mixer(0x10) == (False, True)               # noise only
+    assert _mixer(0x00) == (True, True)                # tone + noise
+    assert _mixer(0x90) == (False, False)              # buzzer: envelope only
+
+
+def test_envelope_period_for_pitch():
+    from spectrumizer.pt3 import envelope_period_for, envelope_steps
+    assert envelope_steps(10) == 32 and envelope_steps(8) == 16   # triangle vs saw
+    assert envelope_period_for(0x0D10, 10) == round(0x0D10 / 512)  # EP = P/(16*N)
+    assert envelope_period_for(64, 10) >= 1                        # never below 1
+    # a deeper note (larger tone period) maps to a larger envelope period
+    assert envelope_period_for(3344, 10) > envelope_period_for(836, 10)

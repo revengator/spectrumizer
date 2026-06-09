@@ -36,6 +36,17 @@ DEMOS = [
      "Octave-doubled lead + synth drums — the default chiptune flavour.",
      "spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune",
      dict(style="chiptune"), dict()),
+    ("buzzer", "Buzzer bass (pure envelope)",
+     "Channel B is the AY hardware envelope itself, oscillating at the note "
+     "pitch with the tone off — the characteristic deep AY buzzer. Pitch is "
+     "inherently coarse, so it sits best on low bass lines.",
+     "spectrumizer ode-to-joy.mid --style chiptune --bass envelope",
+     dict(style="chiptune", bass="envelope"), dict()),
+    ("buzzer-tone", "Buzzer bass (tone + envelope)",
+     "Tone keeps the exact pitch while the hardware envelope adds the buzz — "
+     "pitch-accurate at any register.",
+     "spectrumizer ode-to-joy.mid --style chiptune --bass envelope-tone",
+     dict(style="chiptune", bass="envelope-tone"), dict()),
     ("chiptune-flat", "No dynamics",
      "Flat per-channel volume; compare with the chiptune clip to hear the "
      "velocity-driven dynamics.",

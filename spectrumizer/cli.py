@@ -36,6 +36,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--no-dynamics", dest="dynamics", action="store_false",
                    help="flat per-channel volume instead of mapping MIDI velocity "
                         "to AY volume (dynamics are on by default).")
+    p.add_argument("--bass", choices=["normal", "envelope", "envelope-tone"],
+                   default="normal",
+                   help="bass voice: 'normal' (sampled), 'envelope' (pure buzzer "
+                        "bass — the AY hardware envelope is the oscillator; deep, "
+                        "coarse pitch), or 'envelope-tone' (tone keeps the pitch, "
+                        "envelope adds the buzz — accurate at any register).")
     p.add_argument("--play", action="store_true",
                    help="after writing the .pt3, render it to audio and play it "
                         "(software AY). See also the `spectrumizer-play` command.")
@@ -66,7 +72,7 @@ def main(argv: list[str] | None = None) -> int:
         song, style=args.style, rows_per_beat=args.rows_per_beat,
         speed=args.speed, transpose=args.transpose,
         name=args.name, author=args.author, loop_pos=args.loop_pos,
-        dynamics=args.dynamics)
+        dynamics=args.dynamics, bass=args.bass)
 
     with open(out, "wb") as f:
         f.write(pt3)
@@ -77,7 +83,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  style={stats['style']}  speed={stats['speed']}  "
               f"tempo~{stats['tempo_bpm']}bpm  patterns={stats['patterns']}  "
               f"bytes={stats['bytes']}")
-        print(f"  A=lead({v['lead']})  B=bass({v['bass']})  "
+        b_label = {'envelope': 'buzzer',
+                   'envelope-tone': 'buzzer+tone'}.get(stats['bass'], 'bass')
+        print(f"  A=lead({v['lead']})  B={b_label}({v['bass']})  "
               f"C={v['channel_c']}"
               + (f"({v['harmony']})" if v['channel_c'] == 'harmony' else "")
               + (f"  drums={v['drums']}" if v['drums'] else ""))

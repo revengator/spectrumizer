@@ -5,10 +5,10 @@ A PT3 "sample" is a per-tick amplitude/mixer envelope. Each tick is 4 bytes:
   byte1 = mix bits | amp  (bit7=1 tone OFF... see below)  amp = 0..15
   byte2 = tone offset lo  (0x00)
   byte3 = tone offset hi  (0x00)
-Mixer bits in byte1 (per the player's mixer cascade):
-  0x80 -> tone ON only      (noise off)
-  0x10 -> noise ON only     (tone off)
-  0x00 -> tone + noise      (percussive attack)
+Mixer bits in byte1 (negative logic, per the real player's CHREGS):
+  bit4 (0x10) disables the tone, bit7 (0x80) disables the noise. So
+  0x80 -> tone only, 0x10 -> noise only, 0x00 -> tone + noise (percussive
+  attack), 0x90 -> neither (the buzzer mix: heard only via the envelope).
 Sample header = [loop_point, length-1] then the ticks.
 
 Distilled from a hand-written PT3 composer into a small named instrument
@@ -70,8 +70,28 @@ def build_kick() -> bytes:
     return _sample_raw(ticks, loop=7)
 
 
+def build_buzzer() -> bytes:
+    """Pure buzzer bass: tone AND noise disabled (0x90), so the channel is heard
+    purely through the AY hardware envelope — the envelope IS the oscillator.
+    byte0 = 0 keeps the envelope enabled every tick; the pattern's envelope token
+    (set per note at the right period) supplies the pitch and `Env_En`. A single
+    looping tick — the envelope shape, not the sample, is the waveform. The
+    characteristic deep AY buzzer, but with coarse pitch (best in low octaves)."""
+    return _sample_raw([0x90], loop=0)
+
+
+def build_buzzer_tone() -> bytes:
+    """Tone+envelope buzzer: tone ON, noise off (0x80). The tone generator
+    carries the exact pitch (R0/R1 = note) while the hardware envelope shapes it
+    into a buzz — pitch-accurate at any register, a less 'pure' but more robust
+    buzzer. Amplitude is taken from the envelope (Env_En), so the byte1 nibble is
+    moot. One looping tick."""
+    return _sample_raw([0x80], loop=0)
+
+
 # Canonical sample slot assignment used by the arranger / writer.
-S_LEAD, S_BASS, S_HARMONY, S_SNARE, S_KICK = 1, 2, 3, 4, 5
+(S_LEAD, S_BASS, S_HARMONY, S_SNARE, S_KICK,
+ S_BUZZER, S_BUZZER_TONE) = 1, 2, 3, 4, 5, 6, 7
 
 DEFAULT_SAMPLES: dict[int, bytes] = {
     S_LEAD: build_lead(),
@@ -79,4 +99,6 @@ DEFAULT_SAMPLES: dict[int, bytes] = {
     S_HARMONY: build_harmony(),
     S_SNARE: build_snare(),
     S_KICK: build_kick(),
+    S_BUZZER: build_buzzer(),
+    S_BUZZER_TONE: build_buzzer_tone(),
 }

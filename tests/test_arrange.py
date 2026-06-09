@@ -105,3 +105,30 @@ def test_no_dynamics_is_flat():
     pt3, stats = arrange(_dyn_song(), style='faithful', dynamics=False)
     assert stats['dynamics'] is False
     assert len(_lead_volumes(pt3)) == 1               # single flat volume
+
+
+def _bass_events(pt3):
+    m = parse_module(pt3)
+    return [ev for ev in m.patterns[0][1] if ev is not None and ev.note is not None]
+
+
+def test_buzzer_bass_modes_emit_envelope_and_keep_invariant():
+    song = _chord_song()                              # bass = MIDI 48 (C-3)
+    for mode, sample in (('envelope', 6), ('envelope-tone', 7)):
+        pt3, stats = arrange(song, style='faithful', bass=mode)
+        assert stats['bass'] == mode
+        # the per-pattern row invariant survives the extra (zero-row) env tokens
+        for (a, b, c) in _pattern_channel_addrs(pt3, stats['patterns']):
+            for addr in (a, b, c):
+                assert decode_row_count(pt3[addr:]) == ROWS_PER_PATTERN
+        bass_evs = _bass_events(pt3)
+        assert bass_evs and all(ev.sample == sample for ev in bass_evs)
+        # every bass note carries a shape-10 envelope at a real (>=1) period
+        assert all(ev.env and ev.env[0] == 10 and ev.env[1] >= 1 for ev in bass_evs)
+
+
+def test_normal_bass_has_no_envelope():
+    pt3, stats = arrange(_chord_song(), style='faithful', bass='normal')
+    assert stats['bass'] == 'normal'
+    bass_evs = _bass_events(pt3)
+    assert bass_evs and all(ev.env is None and ev.sample == 2 for ev in bass_evs)

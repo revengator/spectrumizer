@@ -87,13 +87,12 @@ def _u16(data: bytes, off: int) -> int:
 def _mixer(b1: int) -> tuple[bool, bool]:
     """Decode a sample tick's byte1 mixer bits into (tone_on, noise_on).
 
-    Per the composer's convention (confirmed against the real player):
-    0x80 -> tone only, 0x10 -> noise only, 0x00 -> tone + noise.
+    The real player's mixer is negative logic (CHREGS: ``RRA / AND #48``):
+    byte1 bit4 disables the tone, bit7 disables the noise. So 0x80 -> tone only,
+    0x10 -> noise only, 0x00 -> both, 0x90 -> neither (the buzzer mix: the
+    channel is then heard only through the hardware envelope).
     """
-    hi = b1 & 0xF0
-    tone_on = bool(hi & 0x80) or hi == 0x00
-    noise_on = bool(hi & 0x10) or hi == 0x00
-    return tone_on, noise_on
+    return not (b1 & 0x10), not (b1 & 0x80)
 
 
 def parse_sample(data: bytes, addr: int) -> ParsedSample:
@@ -287,8 +286,9 @@ def iter_frames(module: Module, *, loops: int = 1, max_seconds: float | None = N
                 if ev is None:
                     continue
                 cs = chans[ci]
-                cs.env = ev.env                     # envelope state (or None)
-                row_retrig = row_retrig or ev.env_retrig
+                if ev.env_retrig:                   # an env token (re)set state
+                    cs.env = ev.env                 # else sticky (persists, like
+                    row_retrig = True               # the real player's Env_En)
                 if ev.note is None:                 # OFF
                     cs.active = False
                 else:

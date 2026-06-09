@@ -35,6 +35,18 @@
   <p><code>spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune</code> &middot; <a href="audio/chiptune.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
+  <h2>Buzzer bass (pure envelope)</h2>
+  <p>Channel B is the AY hardware envelope itself, oscillating at the note pitch with the tone off — the characteristic deep AY buzzer. Pitch is inherently coarse, so it sits best on low bass lines.</p>
+  <audio controls preload="none" src="audio/buzzer.mp3"></audio>
+  <p><code>spectrumizer ode-to-joy.mid --style chiptune --bass envelope</code> &middot; <a href="audio/buzzer.pt3">download .pt3</a></p>
+</div>
+<div class="demo">
+  <h2>Buzzer bass (tone + envelope)</h2>
+  <p>Tone keeps the exact pitch while the hardware envelope adds the buzz — pitch-accurate at any register.</p>
+  <audio controls preload="none" src="audio/buzzer-tone.mp3"></audio>
+  <p><code>spectrumizer ode-to-joy.mid --style chiptune --bass envelope-tone</code> &middot; <a href="audio/buzzer-tone.pt3">download .pt3</a></p>
+</div>
+<div class="demo">
   <h2>No dynamics</h2>
   <p>Flat per-channel volume; compare with the chiptune clip to hear the velocity-driven dynamics.</p>
   <audio controls preload="none" src="audio/chiptune-flat.mp3"></audio>

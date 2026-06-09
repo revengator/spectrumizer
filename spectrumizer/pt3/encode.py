@@ -58,6 +58,26 @@ def _note_byte(note) -> int:
     return int(note)
 
 
+def envelope_steps(shape: int) -> int:
+    """How many envelope steps make one full cycle of a repeating R13 shape.
+
+    The alternating (triangle) repeats 8/10/12/14... actually only the CONT+ALT
+    shapes mirror, taking 32 steps; the plain repeating sawtooths take 16.
+    """
+    return 32 if (shape & 8 and shape & 2) else 16
+
+
+def envelope_period_for(tone_period: int, shape: int) -> int:
+    """AY envelope period (R11/R12) so a *repeating* envelope `shape` buzzes at
+    the pitch of a tone whose period is `tone_period`.
+
+    Tone freq = clock/(16*tone_period); envelope freq = clock/(256*EP*N) with N
+    steps per cycle. Equating them gives EP = tone_period / (16*N). EP is small,
+    so buzzer pitch is coarse — it resolves best in the low octaves (the bass).
+    """
+    return max(1, round(tone_period / (16 * envelope_steps(shape))))
+
+
 def encode_channel(rows: list, default_sample: int = 1,
                    default_volume: int = 15, ornament: int = 0) -> bytes:
     """Pack one channel of one pattern into PT3 bytes.
