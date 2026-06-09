@@ -1,0 +1,107 @@
+"""Arranger end-to-end: reduction, the PT3 channel-length invariant, styles."""
+
+from spectrumizer.ir import Song, Note
+from spectrumizer.arrange import arrange, vol_from_velocity
+from spectrumizer.arrange.reduce import assign_voices
+from spectrumizer.arrange.model import ROWS_PER_PATTERN
+from spectrumizer.pt3 import decode_row_count
+from spectrumizer.pt3.player import parse_module
+
+
+def _chord_song():
+    # A repeated C-E-G triad (3 simultaneous voices) over 8 beats, plus a low bass.
+    notes = []
+    for beat in range(8):
+        notes.append(Note(pitch=72, start=beat, dur=1))   # top  (lead)
+        notes.append(Note(pitch=67, start=beat, dur=1))   # mid  (harmony)
+        notes.append(Note(pitch=48, start=beat, dur=1))   # low  (bass)
+    return Song(notes=notes, tempo_bpm=120.0, name="TRIAD")
+
+
+def test_assign_voices_skyline():
+    song = _chord_song()
+    lead, bass, harmony = assign_voices(song.notes, n_pitched=3)
+    assert all(n.pitch == 72 for n in lead)
+    assert all(n.pitch == 48 for n in bass)
+    assert all(n.pitch == 67 for n in harmony)
+
+
+def _pattern_channel_addrs(pt3, n_patterns):
+    ppt = pt3[0x67] | (pt3[0x68] << 8)
+    out = []
+    for p in range(n_patterns):
+        base = ppt + p * 6
+        a = pt3[base] | (pt3[base + 1] << 8)
+        b = pt3[base + 2] | (pt3[base + 3] << 8)
+        c = pt3[base + 4] | (pt3[base + 5] << 8)
+        out.append((a, b, c))
+    return out
+
+
+def test_row_invariant_faithful():
+    pt3, stats = arrange(_chord_song(), style='faithful')
+    assert stats['total_rows'] % ROWS_PER_PATTERN == 0
+    for (a, b, c) in _pattern_channel_addrs(pt3, stats['patterns']):
+        for addr in (a, b, c):
+            assert decode_row_count(pt3[addr:]) == ROWS_PER_PATTERN
+
+
+def test_row_invariant_chiptune_and_styles_differ():
+    song = _chord_song()
+    faithful, sf = arrange(song, style='faithful')
+    chiptune, sc = arrange(song, style='chiptune')
+
+    for (a, b, c) in _pattern_channel_addrs(chiptune, sc['patterns']):
+        for addr in (a, b, c):
+            assert decode_row_count(chiptune[addr:]) == ROWS_PER_PATTERN
+
+    # chiptune drops harmony for synth drums; faithful keeps harmony
+    assert sf['voices']['channel_c'] == 'harmony'
+    assert sc['voices']['channel_c'] == 'synth-drums'
+    assert faithful != chiptune
+
+
+def test_drums_take_channel_c():
+    song = _chord_song()
+    song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
+    _, stats = arrange(song, style='faithful')
+    assert stats['voices']['channel_c'] == 'drums'
+    assert stats['voices']['drums'] == 8
+
+
+def test_valid_pt3_header():
+    pt3, _ = arrange(_chord_song(), style='faithful')
+    assert pt3[0x00:0x0D] == b'ProTracker 3.'
+
+
+def _dyn_song():
+    # one lead voice alternating loud/soft so velocity must drive the volume
+    notes = [Note(pitch=72, start=b, dur=1, velocity=(120 if b % 2 == 0 else 30))
+             for b in range(8)]
+    return Song(notes=notes, tempo_bpm=120.0, name="DYN")
+
+
+def test_vol_from_velocity():
+    assert vol_from_velocity(127, 15, 127) == 15      # loudest note -> ceiling
+    assert vol_from_velocity(64, 15, 127) == 8
+    assert vol_from_velocity(1, 15, 127) == 1         # floor: never fully silent
+    assert vol_from_velocity(96, 10, 96) == 10        # piece max -> channel ceiling
+    assert vol_from_velocity(50, 13, 0) == 13         # vmax<=0 -> dynamics off
+
+
+def _lead_volumes(pt3):
+    m = parse_module(pt3)
+    return {ev.vol for ch in m.patterns[0] for ev in ch
+            if ev is not None and ev.note is not None}
+
+
+def test_dynamics_vary_volume():
+    pt3, stats = arrange(_dyn_song(), style='faithful', dynamics=True)
+    assert stats['dynamics'] is True
+    assert len(_lead_volumes(pt3)) >= 2               # velocity -> different volumes
+
+
+def test_no_dynamics_is_flat():
+    pt3, stats = arrange(_dyn_song(), style='faithful', dynamics=False)
+    assert stats['dynamics'] is False
+    assert len(_lead_volumes(pt3)) == 1               # single flat volume

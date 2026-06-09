@@ -1,0 +1,35 @@
+"""MIDI -> IR adapter."""
+
+import mido
+
+from spectrumizer.inputs.midi import load_midi
+
+
+def _write_midi(path):
+    mid = mido.MidiFile(ticks_per_beat=480)
+    tr = mido.MidiTrack(); mid.tracks.append(tr)
+    tr.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(120), time=0))
+    # two melody notes on ch0 (1 beat each)
+    tr.append(mido.Message('note_on', note=60, velocity=100, channel=0, time=0))
+    tr.append(mido.Message('note_off', note=60, velocity=0, channel=0, time=480))
+    tr.append(mido.Message('note_on', note=64, velocity=100, channel=0, time=0))
+    tr.append(mido.Message('note_off', note=64, velocity=0, channel=0, time=480))
+    # a kick on the GM drum channel (ch9)
+    tr.append(mido.Message('note_on', note=36, velocity=100, channel=9, time=0))
+    tr.append(mido.Message('note_off', note=36, velocity=0, channel=9, time=120))
+    mid.save(path)
+
+
+def test_load_midi_notes_drums_tempo(tmp_path):
+    p = tmp_path / "t.mid"
+    _write_midi(str(p))
+    song = load_midi(str(p))
+
+    assert len(song.notes) == 2
+    assert {n.pitch for n in song.notes} == {60, 64}
+    assert len(song.drums) == 1 and song.drums[0].pitch == 36
+    assert song.has_drums
+    assert abs(song.tempo_bpm - 120.0) < 0.5
+    # times are in beats; the first melody note starts at beat 0, lasts 1 beat
+    first = sorted(song.notes, key=lambda n: n.start)[0]
+    assert abs(first.start) < 1e-6 and abs(first.dur - 1.0) < 1e-3

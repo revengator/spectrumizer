@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spectrumizer"
+description = "Generate ZX Spectrum AY (PT3) music from MIDI and other sources."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Miguel Ángel Esteve Marco", email = "esteve@telemaco.es" }]
+keywords = ["zx-spectrum", "ay-3-8910", "pt3", "vortex-tracker", "chiptune", "midi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Multimedia :: Sound/Audio :: Conversion",
+    "Topic :: Multimedia :: Sound/Audio :: MIDI",
+]
+dynamic = ["version"]
+dependencies = ["mido>=1.3,<2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+demos = ["lameenc>=1.5"]      # MP3 encoder for examples/make_demos.py (pip wheel, no system ffmpeg)
+
+[project.scripts]
+spectrumize = "spectrumizer.cli:main"
+spectrumize-play = "spectrumizer.play:main"
+
+[project.urls]
+Homepage = "https://github.com/revengator/spectrumizer"
+Repository = "https://github.com/revengator/spectrumizer"
+Issues = "https://github.com/revengator/spectrumizer/issues"
+
+[tool.setuptools]
+packages = [
+    "spectrumizer",
+    "spectrumizer.arrange",
+    "spectrumizer.inputs",
+    "spectrumizer.pt3",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "spectrumizer.__version__" }

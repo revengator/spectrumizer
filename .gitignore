@@ -1,0 +1,20 @@
+# Python venv (per machine; recreate with requirements.txt)
+.venv/
+__pycache__/
+*.pyc
+
+# pytest / tooling caches
+.pytest_cache/
+
+# Generated PT3 output (regenerable from the source MIDIs)
+examples/*.pt3
+out/
+
+# Packaging / build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# OS
+.DS_Store
