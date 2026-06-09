@@ -1,5 +1,10 @@
 # spectrumizer
 
+[![CI](https://github.com/revengator/spectrumizer/actions/workflows/ci.yml/badge.svg)](https://github.com/revengator/spectrumizer/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
+[![Live demos](https://img.shields.io/badge/%E2%96%B6-live%20demos-brightgreen.svg)](https://revengator.github.io/spectrumizer/)
+
 Generate **ZX Spectrum AY music (`.pt3`)** from public sources (MIDI now;
 MusicXML/scores planned). The output is a standard Vortex Tracker / Sergey
 Bulba PT3 module, so anything it produces drops straight into a Spectrum game
