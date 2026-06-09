@@ -64,8 +64,10 @@ def encode_channel(rows: list, default_sample: int = 1,
 
     `rows` is a list of cells, one per row: REST (hold/empty), OFF (note cut),
     a note (PT3 name str or byte int), or a (note, opts) tuple where opts may
-    carry 'vol', 'ornament', 'sample'. Trailing rests after an event extend its
-    NtSkip; leading rests are dropped (anchor row 0, see module docstring)."""
+    carry 'vol', 'ornament', 'sample', 'env'. 'env' is (shape 1..14, period) to
+    drive the row's note from the AY hardware envelope (buzzer bass), or 'off'
+    to stop using it. Trailing rests after an event extend its NtSkip; leading
+    rests are dropped (anchor row 0, see module docstring)."""
     out = bytearray()
     cur_sample = default_sample
     cur_volume = default_volume
@@ -102,6 +104,19 @@ def encode_channel(rows: list, default_sample: int = 1,
         if 'sample' in opts and opts['sample'] != cur_sample:
             cur_sample = opts['sample']
             out.append(0xD0 | (cur_sample & 0x1F))
+        if 'env' in opts:
+            env = opts['env']
+            if env == 'off' or env is None:
+                out.append(0xB0)                       # envelope OFF
+            else:
+                shape, period = env
+                if not 1 <= shape <= 14:
+                    raise ValueError(
+                        f"PT3 envelope shape must be 1..14 (got {shape}): shape 0 "
+                        "collides with NtSkip (0xB1) and 15 with OFF (0xC0).")
+                out.append(0xB1 + shape)               # set shape -> R13
+                out.append((period >> 8) & 0xFF)       # period high byte
+                out.append(period & 0xFF)              # period low byte
 
         if not initial_volume_emitted:
             out.append(0xC0 | (default_volume & 0x0F))
@@ -144,8 +159,13 @@ def decode_row_count(data: bytes) -> int:
             continue
         if 0x40 <= b <= 0x4F:               # ornament change
             continue
+        if b == 0xB0:                       # envelope OFF — no operand
+            continue
         if b == 0xB1:                       # NtSkip change
             cur_skip = data[i]; i += 1
+            continue
+        if 0xB2 <= b <= 0xBF:               # set envelope — 2 period bytes follow
+            i += 2
             continue
         if 0xC1 <= b <= 0xCF:               # volume change
             continue

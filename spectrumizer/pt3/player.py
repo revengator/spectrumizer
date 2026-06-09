@@ -6,7 +6,8 @@ NtSkip) and yields, frame by frame (50 Hz), the per-channel state needed to
 drive an AY synthesiser (see `spectrumizer.audio`).
 
 It is **not** a full Vortex Tracker player — it understands exactly the tokens
-`encode_channel` writes and nothing else (no envelopes, glissando, vibrato,
+`encode_channel` writes plus the AY hardware-envelope tokens (so buzzer-bass
+modules can be auditioned), and nothing else (no glissando, vibrato,
 noise-period commands). That is enough to audition anything spectrumizer makes.
 """
 
@@ -58,6 +59,8 @@ class RowEvent:
     sample: int
     ornament: int
     vol: int
+    env: tuple | None = None   # (shape 1..14, period 0..65535) or None (env off)
+    env_retrig: bool = False   # this event (re)wrote R13 -> the AY retriggers
 
 
 @dataclass
@@ -129,6 +132,8 @@ def decode_channel(data: bytes, addr: int) -> list:
     """
     rows: list = []
     cur_sample, cur_orn, cur_vol, cur_skip = 1, 0, 15, 1
+    cur_env = None                          # (shape, period) or None (env off)
+    cur_env_retrig = False                  # set when an env token (re)wrote R13
     i = addr
     n = len(data)
     while i < n:
@@ -145,19 +150,31 @@ def decode_channel(data: bytes, addr: int) -> list:
         if 0x40 <= b <= 0x4F:               # ornament change
             cur_orn = b & 0x0F
             continue
+        if b == 0xB0:                       # envelope OFF
+            cur_env, cur_env_retrig = None, True
+            continue
         if b == 0xB1:                       # NtSkip change
             cur_skip = data[i]; i += 1
+            continue
+        if 0xB2 <= b <= 0xBF:               # set envelope: shape + period (hi, lo)
+            shape = b - 0xB1                # 1..14 (0xB0 is OFF, 0xB1 is NtSkip)
+            period = (data[i] << 8) | data[i + 1]; i += 2
+            cur_env, cur_env_retrig = (shape, period), True
             continue
         if 0xC1 <= b <= 0xCF:               # volume change
             cur_vol = b & 0x0F
             continue
         if b == 0xC0:                       # OFF (note cut)
-            rows.append(RowEvent(None, cur_sample, cur_orn, cur_vol))
+            rows.append(RowEvent(None, cur_sample, cur_orn, cur_vol,
+                                 cur_env, cur_env_retrig))
             rows.extend([None] * (cur_skip - 1))
+            cur_env_retrig = False
             continue
         if 0x50 <= b <= 0xAF:               # note
-            rows.append(RowEvent(b, cur_sample, cur_orn, cur_vol))
+            rows.append(RowEvent(b, cur_sample, cur_orn, cur_vol,
+                                 cur_env, cur_env_retrig))
             rows.extend([None] * (cur_skip - 1))
+            cur_env_retrig = False
             continue
         # any other token: ignore (no time cost)
     return rows
@@ -212,6 +229,7 @@ class _Chan:
     s_pos: int = 0
     o_pos: int = 0
     cr_ns_sl: int = 0            # persisted noise slide (CrNsSl)
+    env: tuple | None = None     # (shape, period) while this channel uses the env
 
 
 def _positions(module: Module, loops: int, unbounded: bool):
@@ -228,18 +246,26 @@ def _positions(module: Module, loops: int, unbounded: bool):
 
 
 def iter_frames(module: Module, *, loops: int = 1, max_seconds: float | None = None):
-    """Yield, per 50 Hz frame, ``(channels, noise_period)``.
+    """Yield, per 50 Hz frame, ``(channels, noise_period, envelope)``.
 
     `channels` is a list of 3 tuples
-    ``(note_index | None, amplitude 0..15, tone_on, noise_on)`` — `note_index`
-    is the semitone index (0 == PT3 C-1) after the ornament offset, and
-    amplitude already folds the channel volume into the sample amplitude.
+    ``(note_index | None, amplitude 0..15, tone_on, noise_on, use_env)`` —
+    `note_index` is the semitone index (0 == PT3 C-1) after the ornament offset,
+    amplitude already folds the channel volume into the sample amplitude, and
+    `use_env` is True while that channel is driven by the AY hardware envelope
+    (its amplitude is then ignored — the envelope level is used instead).
 
     `noise_period` is the AY noise register R6 the real player would write this
     frame: ``Ns_Base + AddToNs`` (0..255; the chip uses the low 5 bits, and 0
     means hardware period 1). `Ns_Base` is only changed by the PD_NOIS pattern
     command — which spectrumizer never emits — so for its own modules the noise
     period is whatever the active samples' byte0 dictates (0 by default).
+
+    `envelope` is ``(period, shape, retrig)`` — the AY's single envelope
+    generator (R11/R12 period, R13 shape 1..14). `retrig` is True only on the
+    first frame of a row that (re)wrote R13, mirroring the real player (which
+    parks R13 at a no-write sentinel otherwise, so the envelope free-runs). If
+    several channels enable the envelope, the highest channel's period/shape win.
     """
     speed = module.speed
     budget = None if max_seconds is None else int(max_seconds * FRAME_HZ)
@@ -254,24 +280,32 @@ def iter_frames(module: Module, *, loops: int = 1, max_seconds: float | None = N
         chan_rows = module.patterns[pidx]
         rows = max(len(c) for c in chan_rows)
         for r in range(rows):
+            row_retrig = False
             for ci in range(3):
                 seq = chan_rows[ci]
                 ev = seq[r] if r < len(seq) else None
                 if ev is None:
                     continue
                 cs = chans[ci]
+                cs.env = ev.env                     # envelope state (or None)
+                row_retrig = row_retrig or ev.env_retrig
                 if ev.note is None:                 # OFF
                     cs.active = False
                 else:
                     cs.note, cs.active = ev.note, True
                     cs.sample, cs.ornament, cs.vol = ev.sample, ev.ornament, ev.vol
                     cs.s_pos = cs.o_pos = 0
+            # the AY has a single envelope generator: the highest channel that
+            # currently uses it wins its period/shape.
+            env_ps = next((c.env for c in reversed(chans) if c.env is not None), None)
+            env_shape = env_ps[0] if env_ps else 0
+            env_period = env_ps[1] if env_ps else 0
             for _f in range(speed):
                 frame = []
                 for ci in range(3):              # A, B, C order: last noise tick wins
                     cs = chans[ci]
                     if not cs.active or cs.note is None:
-                        frame.append((None, 0, False, False))
+                        frame.append((None, 0, False, False, False))
                         continue
                     samp = module.samples.get(cs.sample, _DEFAULT_SAMPLE_FALLBACK)
                     orn = module.ornaments.get(cs.ornament, _DEFAULT_ORNAMENT_FALLBACK)
@@ -279,14 +313,15 @@ def iter_frames(module: Module, *, loops: int = 1, max_seconds: float | None = N
                         samp.at(cs.s_pos)
                     note_idx = (cs.note - 0x50) + orn.at(cs.o_pos)
                     amp = (s_amp * cs.vol) // 15
-                    frame.append((note_idx, amp, tone_on, noise_on))
+                    frame.append((note_idx, amp, tone_on, noise_on, cs.env is not None))
                     if noise_path:               # this tick drives the AY noise period
                         add_to_ns = (noise_add + cs.cr_ns_sl) & 0xFF
                         if persist:
                             cs.cr_ns_sl = add_to_ns
                     cs.s_pos = samp.advance(cs.s_pos)
                     cs.o_pos = orn.advance(cs.o_pos)
-                yield frame, (ns_base + add_to_ns) & 0xFF
+                env = (env_period, env_shape, row_retrig and _f == 0)
+                yield frame, (ns_base + add_to_ns) & 0xFF, env
                 emitted += 1
                 if budget is not None and emitted >= budget:
                     return

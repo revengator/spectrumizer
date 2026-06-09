@@ -107,8 +107,9 @@ spectrumizer-play song.pt3 --noise-period 5  # force a noise period (default: th
 
 The synth (`spectrumizer/audio.py`) plus the PT3 interpreter
 (`spectrumizer/pt3/player.py`, the inverse of the encoder) only implement the
-subset of PT3 this tool emits — notes, OFF, sample/ornament/volume, NtSkip. Pitch
-uses the **exact PT3 tone table** (the table-1 periods from the real Bulba player,
+subset of PT3 this tool emits — notes, OFF, sample/ornament/volume, NtSkip, and
+the **AY hardware envelope** (all 16 R13 shapes, so buzzer-bass modules audition
+too). Pitch uses the **exact PT3 tone table** (the table-1 periods from the real Bulba player,
 so notes land where the chip puts them; pass `--tuning equal` for the old
 equal-tempered approximation). Treat it as a faithful **audition**, not a
 cycle-exact emulation. For the real thing, drop the `.pt3` into the PT3 slot of a
@@ -141,9 +142,11 @@ pytest -q
 
 - **Generate:** MIDI → PT3, faithful + chiptune, with velocity-driven dynamics.
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
-  table, real per-frame noise period, ABC panning (`spectrumizer-play` / `--play`).
-- **Planned:** MusicXML (music21) input, chord arpeggios, AY hardware envelopes
-  (buzzer bass), general PT3 playback (envelope/slides), raw-AY/`.vtx` export.
+  table, real per-frame noise period, ABC panning, and the AY **hardware
+  envelope generator** (`spectrumizer-play` / `--play`).
+- **Planned:** buzzer-bass generation (`--bass envelope`, routes the bass through
+  the hardware envelope at note pitch), chord arpeggios, MusicXML (music21) input,
+  PT3 slides/glissando in the audition player, raw-AY/`.vtx` export.
 
 ## Origin
 

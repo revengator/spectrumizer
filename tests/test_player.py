@@ -1,5 +1,7 @@
 """PT3 playback: parse a generated module back and render it to PCM."""
 
+import pytest
+
 from spectrumizer.pt3 import (
     encode_channel, build_pt3, decode_row_count, NOTE_TO_BYTE,
     DEFAULT_SAMPLES, DEFAULT_ORNAMENTS, REST, OFF,
@@ -57,15 +59,16 @@ def test_frame_count_matches_speed():
     module = parse_module(_make_module(speed=6))
     frames = list(iter_frames(module))
     assert len(frames) == ROWS * 6            # 64 rows * 6 frames/row
-    # each frame is (channels, noise_period) with 3 channels
-    assert all(len(f) == 2 and len(f[0]) == 3 for f in frames)
+    # each frame is (channels, noise_period, envelope) with 3 channels, and each
+    # channel is a 5-tuple (note, amp, tone_on, noise_on, use_env)
+    assert all(len(f) == 3 and len(f[0]) == 3 and len(f[0][0]) == 5 for f in frames)
 
 
 def test_noise_period_is_derived_not_fixed():
     # spectrumizer never emits PD_NOIS and its samples carry byte0 == 0, so the
     # real per-frame noise register is 0 throughout (hardware period 1).
     module = parse_module(_make_module())
-    assert all(noise == 0 for _channels, noise in iter_frames(module))
+    assert all(noise == 0 for _channels, noise, _env in iter_frames(module))
 
 
 def test_render_is_audible():
@@ -106,3 +109,78 @@ def test_pt3_close_to_equal_tempered():
     pt3, eq = audio.build_pt3_table(), audio.build_equal_table()
     assert pt3 != eq                                  # a distinct, real table
     assert all(abs(p - e) <= max(2, e * 0.02) for p, e in zip(pt3, eq))
+
+
+# --- AY hardware envelopes (buzzer bass) -------------------------------------
+
+def _bass_module(env=(10, 0x0300), off_row=None):
+    """A tiny 3-channel module whose bass (B) optionally uses the AY envelope.
+
+    A = lead (governs pattern length), B = bass, C = a held inner voice. Pass
+    `env=(shape, period)` to drive B from the hardware envelope at row 0, and
+    `off_row` to turn it back off partway through.
+    """
+    a = encode_channel(_cells({0: 'C-5', 48: OFF}),
+                       default_sample=1, default_volume=15)
+    bcells = _cells({0: 'C-3'})
+    if env is not None:
+        bcells[0] = ('C-3', {'env': env})
+    if off_row is not None:
+        bcells[off_row] = ('C-3', {'env': 'off'})
+    b = encode_channel(bcells, default_sample=2, default_volume=14)
+    c = encode_channel(_cells({0: 'E-4'}), default_sample=3, default_volume=10)
+    assert decode_row_count(a) == decode_row_count(b) == decode_row_count(c) == ROWS
+    return build_pt3([(a, b, c)], dict(DEFAULT_SAMPLES), dict(DEFAULT_ORNAMENTS),
+                     name="BASS", speed=6)
+
+
+def test_envelope_tokens_roundtrip_through_decode():
+    module = parse_module(_bass_module(env=(10, 0x0300), off_row=32))
+    chB = module.patterns[0][1]
+    assert chB[0].env == (10, 0x0300) and chB[0].env_retrig is True
+    assert chB[32].env is None and chB[32].env_retrig is True   # 0xB0 -> env OFF
+    # the per-pattern row invariant survives the extra (zero-row) env tokens
+    assert all(decode_row_count(ch) == ROWS
+               for ch in (encode_channel(_cells({0: 'C-3'})),))
+
+
+def test_iter_frames_reports_envelope_and_retriggers_once():
+    frames = list(iter_frames(parse_module(_bass_module(env=(8, 0x0123), off_row=32))))
+    assert frames[0][2][:2] == (0x0123, 8)            # envelope = (period, shape)
+    assert frames[0][2][2] is True                    # retrigger: row 0, frame 0
+    assert all(frames[f][2][2] is False for f in range(1, 6))   # ...only there
+    assert frames[0][0][1][4] is True                 # channel B flagged use_env
+    # envelope turned off at row 32 (= frame 192): no channel uses it any more
+    assert frames[192][2][:2] == (0, 0)
+    assert frames[192][0][1][4] is False
+
+
+def test_envelope_changes_the_rendered_timbre():
+    on = parse_module(_bass_module(env=(10, 0x0300)))
+    off = parse_module(_bass_module(env=None))
+    pon, _ = audio.render_pcm(on, sample_rate=8000)
+    poff, _ = audio.render_pcm(off, sample_rate=8000)
+    assert max(abs(v) for v in pon) > 0               # audible
+    assert list(pon) != list(poff)                    # the envelope reshapes B
+
+
+def test_envelope_shape_table():
+    # repeating triangle (10): down 15..0 then up 0..15, loops from the start
+    levels, loop = audio._ENV_SHAPES[10]
+    assert levels[:16] == list(range(15, -1, -1))
+    assert levels[16:] == list(range(0, 16))
+    assert loop == 0 and len(levels) == 32
+    # sawtooth up (12): 0..15, loops from the start
+    levels, loop = audio._ENV_SHAPES[12]
+    assert levels == list(range(16)) and loop == 0
+    # one-shot decay (0): 15..0 then hold 0; hold-high (11): decay then hold 15
+    levels, loop = audio._ENV_SHAPES[0]
+    assert levels[:16] == list(range(15, -1, -1)) and levels[loop] == 0
+    levels, loop = audio._ENV_SHAPES[11]
+    assert levels[loop] == 15
+
+
+def test_envelope_shape_out_of_range_rejected():
+    for bad in (0, 15, 16):                            # 0->NtSkip, 15->OFF token
+        with pytest.raises(ValueError):
+            encode_channel([('C-3', {'env': (bad, 0x0100)})])

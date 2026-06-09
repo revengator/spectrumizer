@@ -1,9 +1,10 @@
 """AY-3-8910 synthesiser + WAV rendering for PT3 playback.
 
 A deliberately small software AY: three square-wave tone generators, one 17-bit
-LFSR noise generator, per-channel tone/noise mixing and a 16-level logarithmic
-DAC. No envelope generator — spectrumizer's samples carry amplitude per tick, so
-the envelope path is never used. The point is to *audition* a module on any
+LFSR noise generator, one hardware envelope generator (all 16 shapes), per-channel
+tone/noise mixing and a 16-level logarithmic DAC. A channel in envelope mode takes
+its level from the shared envelope instead of its sample amplitude — that is what
+lets buzzer-bass modules be auditioned. The point is to *audition* a module on any
 machine, not to be a cycle-exact emulator; pitch uses the exact PT3 tone table by
 default (`build_pt3_table`), with an equal-tempered fallback (`tuning='equal'`).
 """
@@ -28,6 +29,29 @@ AY_VOL = [
     0.0, 0.00999, 0.01445, 0.02106, 0.03070, 0.04555, 0.06450, 0.10736,
     0.12659, 0.20499, 0.29221, 0.37284, 0.49253, 0.63532, 0.80558, 1.0,
 ]
+
+
+def _env_levels(shape: int) -> tuple[list, int]:
+    """An AY envelope shape (R13) as a list of 0..15 levels + a loop index.
+
+    R13 bits are CONT(8) ATTACK(4) ALTERNATE(2) HOLD(1). The first ramp rises
+    (ATTACK) or falls; then the shape either decays to 0 and holds (CONT=0),
+    holds at a fixed level (HOLD=1), or repeats — mirrored (ALT, a triangle) or
+    not (a sawtooth). The repeating shapes 8/10/12/14 are the buzzer-bass ones.
+    """
+    cont, att, alt, hold = shape & 8, shape & 4, shape & 2, shape & 1
+    ramp = list(range(16)) if att else list(range(15, -1, -1))
+    if not cont:                       # 0..7: one ramp, then silence
+        return ramp + [0], len(ramp)
+    if hold:                           # 9,11,13,15: one ramp, then hold a level
+        return ramp + [15 - ramp[-1] if alt else ramp[-1]], len(ramp)
+    if alt:                            # 10,14: triangle (ramp + its mirror, loop)
+        return ramp + ramp[::-1], 0
+    return ramp, 0                     # 8,12: sawtooth (ramp, loop)
+
+
+# Precomputed (levels, loop_index) for every R13 shape 0..15.
+_ENV_SHAPES = [_env_levels(s) for s in range(16)]
 
 
 # --- the exact PT3 tone table (the real Spectrum pitches) ---------------------
@@ -100,22 +124,48 @@ def render_pcm(module: Module, *, sample_rate: int = DEFAULT_RATE,
     lfsr = 1
     noise_level = 1.0
 
-    for frame, noise_r6 in iter_frames(module, loops=loops, max_seconds=max_seconds):
-        # Precompute each channel's constant-per-frame parameters.
+    # Shared AY envelope generator (free-running; retriggered only when a row
+    # (re)writes R13). env_pos walks env_vols, wrapping to env_loop.
+    env_pos = 0
+    env_acc = 0.0
+    env_vol = 0.0
+    env_vols = [0.0]
+    env_loop = 0
+    n_env = 1
+
+    for frame, noise_r6, (env_period, env_shape, env_retrig) in \
+            iter_frames(module, loops=loops, max_seconds=max_seconds):
+        # Precompute each channel's constant-per-frame parameters. An envelope
+        # channel is kept even at sample amplitude 0 — the envelope feeds it.
         ch = []
-        for note_idx, amp, tone_on, noise_on in frame:
-            if amp <= 0 or note_idx is None:
+        any_env = False
+        for note_idx, amp, tone_on, noise_on, use_env in frame:
+            if note_idx is None or (amp <= 0 and not use_env):
                 ch.append(None)
                 continue
             period = periods[note_idx] if 0 <= note_idx < 96 \
                 else periods[max(0, min(95, note_idx))]
             inc = (AY_CLOCK / (16.0 * period)) / sample_rate
-            ch.append((inc, AY_VOL[amp], tone_on, noise_on))
+            ch.append((inc, AY_VOL[amp], tone_on, noise_on, use_env))
+            any_env = any_env or use_env
 
         # AY noise period this frame: the module-derived R6 (0 -> hardware 1),
         # or a fixed override. Recomputed per frame so it tracks the song.
         npd = noise_period if noise_period is not None else ((noise_r6 & 0x1F) or 1)
         noise_step = (AY_CLOCK / 16.0 / npd) / sample_rate
+
+        # AY envelope this frame: step rate = clock / (256 * period). Only set up
+        # when a channel actually uses it; retrigger restarts the shape.
+        if any_env:
+            env_vol_levels, env_loop = _ENV_SHAPES[env_shape & 0x0F]
+            env_vols = [AY_VOL[lv] for lv in env_vol_levels]
+            n_env = len(env_vols)
+            env_step = (AY_CLOCK / 256.0 / max(1, env_period)) / sample_rate
+            if env_retrig:
+                env_pos, env_acc = 0, 0.0
+            if env_pos >= n_env:
+                env_pos = env_loop
+            env_vol = env_vols[env_pos]
 
         for _s in range(spf):
             # advance the shared noise LFSR
@@ -126,19 +176,29 @@ def render_pcm(module: Module, *, sample_rate: int = DEFAULT_RATE,
                 lfsr = (lfsr >> 1) | (newbit << 16)
                 noise_level = float(lfsr & 1)
 
+            # advance the shared envelope generator
+            if any_env:
+                env_acc += env_step
+                while env_acc >= 1.0:
+                    env_acc -= 1.0
+                    env_pos += 1
+                    if env_pos >= n_env:
+                        env_pos = env_loop
+                env_vol = env_vols[env_pos]
+
             left = right = 0.0
             for ci in range(3):
                 c = ch[ci]
                 if c is None:
                     continue
-                inc, vol, tone_on, noise_on = c
+                inc, vol, tone_on, noise_on, use_env = c
                 ph = phase[ci] + inc
                 if ph >= 1.0:
                     ph -= int(ph)
                 phase[ci] = ph
                 t_eff = 1.0 if (not tone_on or ph < 0.5) else 0.0
                 n_eff = 1.0 if (not noise_on or noise_level >= 1.0) else 0.0
-                out = vol * t_eff * n_eff
+                out = (env_vol if use_env else vol) * t_eff * n_eff
                 left += out * pan_l[ci]
                 right += out * pan_r[ci]
 
