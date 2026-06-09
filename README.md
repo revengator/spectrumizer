@@ -25,8 +25,12 @@ file and spectrumizer arranges it down to the AY's 3 channels (+ noise).
 ## Install
 
 ```bash
-pip install spectrumizer    # from PyPI — installs the `spectrumizer` / `spectrumizer-play` commands
+pip install spectrumizer    # from PyPI — installs spectrumizer / spectrumizer-play / spectrumizer-pack
 ```
+
+The `spectrumizer` and `spectrumizer-play` commands are pure-Python.
+`spectrumizer-pack` (package a `.pt3` for an emulator) additionally needs
+[**sjasmplus**](https://github.com/z00m128/sjasmplus) on PATH to assemble the player.
 
 Or from a clone (for development):
 
@@ -120,9 +124,25 @@ the **AY hardware envelope** (all 16 R13 shapes, so buzzer-bass modules audition
 too). Pitch uses the **exact PT3 tone table** (the table-1 periods from the real Bulba player,
 so notes land where the chip puts them; pass `--tuning equal` for the old
 equal-tempered approximation). Treat it as a faithful **audition**, not a
-cycle-exact emulation. For the real thing, drop the `.pt3` into the PT3 slot of a
-128K Spectrum build running a Bulba/Vortex replayer, rebuild, and run it in an
-emulator (e.g. ZEsarUX).
+cycle-exact emulation — for the real chip, package the `.pt3` for an emulator
+(below).
+
+## Hear it on a real Spectrum / emulator
+
+A `.pt3` is only music data. `spectrumizer-pack` wraps it with Sergey Bulba's PT3
+replayer + a tiny loader and assembles a **self-playing tape or snapshot** you
+can load in Fuse / ZEsarUX (or on real hardware):
+
+```bash
+spectrumizer-pack song.pt3 -o song.tap     # autoloading tape (BASIC + CODE)
+spectrumizer-pack song.pt3 --sna song.sna  # 128K snapshot (boots straight into the tune)
+spectrumizer-pack song.pt3 --tap a.tap --sna a.sna   # both at once
+```
+
+The music uses the AY, so it needs a **128K** machine: the `.sna` is a 128K
+snapshot and just plays; the `.tap` must be loaded in **128K / 128-BASIC** mode
+(the 48K loader has no AY). Needs **sjasmplus** on PATH to assemble the player.
+The bundled player is Bulba's, under its own terms — see [`LICENSING.md`](LICENSING.md).
 
 ## Demos
 
@@ -157,6 +177,8 @@ pytest -q
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
   table, real per-frame noise period, ABC panning, and the AY **hardware
   envelope generator** (`spectrumizer-play` / `--play`).
+- **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
+  128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
 - **Planned:** chord arpeggios, MusicXML (music21) input, PT3 slides/glissando in
   the audition player, raw-AY/`.vtx` export.
 

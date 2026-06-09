@@ -35,3 +35,15 @@ not make it free to ship.
 **Verify each track's licence BEFORE bundling**, and never relax your project's
 own licence to paper over a missing permission on an asset. When in doubt, leave
 it out — or replace it with an original or PD piece.
+
+## Bundled third-party code: the PT3 player
+
+`spectrumizer-pack` embeds **Sergey Bulba's PT3 player** (Vortex Tracker II v1.0,
+release 7) — `spectrumizer/pack/pt3player.asm` — to turn a `.pt3` into a
+self-playing tape/snapshot. That file is **Bulba's work, not spectrumizer's**,
+and is therefore **not** covered by spectrumizer's MIT licence; it is included
+under its own (freely-redistributable) terms, with attribution preserved in its
+header. It is the standard PT3 replayer shipped with Vortex Tracker and used
+across the ZX scene. The only changes made are mechanical (origin/`ORG` removed,
+one downstream volume patch reverted to stock). If you redistribute spectrumizer,
+keep that attribution intact.
