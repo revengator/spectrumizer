@@ -24,7 +24,7 @@ file and spectrumizer arranges it down to the AY's 3 channels (+ noise).
 ## Install
 
 ```bash
-pip install -e .            # from a clone — installs the `spectrumize` command + deps
+pip install -e .            # from a clone — installs the `spectrumizer` command + deps
 ```
 
 Or, without installing the package:
@@ -41,23 +41,23 @@ Silicon — no native build step.
 
 ```bash
 # faithful 3-voice reduction
-spectrumize song.mid -o song.pt3                 # or: python -m spectrumizer song.mid -o song.pt3
+spectrumizer song.mid -o song.pt3                 # or: python -m spectrumizer song.mid -o song.pt3
 
 # chiptune flavour: octave-doubled leads + synth drums when the source has none
-spectrumize song.mid -o song.pt3 --style chiptune
+spectrumizer song.mid -o song.pt3 --style chiptune
 
 # tune the AY octave by ear, change grid/tempo
-spectrumize song.mid --transpose -12 --rows-per-beat 4 --speed 6 \
+spectrumizer song.mid --transpose -12 --rows-per-beat 4 --speed 6 \
     --name "MY THEME" --author "ME"
 
 # dynamics: MIDI velocity drives per-note volume (on by default)
-spectrumize song.mid -o song.pt3 --no-dynamics      # ...or flat per-channel volume
+spectrumizer song.mid -o song.pt3 --no-dynamics      # ...or flat per-channel volume
 
 # generate and immediately hear it (renders through a software AY, then plays)
-spectrumize song.mid -o song.pt3 --play
+spectrumizer song.mid -o song.pt3 --play
 ```
 
-Run `spectrumize --help` for all flags.
+Run `spectrumizer --help` for all flags.
 
 ## How it works
 
@@ -94,13 +94,13 @@ C right) and plays it through your system audio player (`afplay` on macOS;
 `ffplay` / `aplay` / `paplay` / `sox` elsewhere).
 
 ```bash
-spectrumize-play song.pt3            # render song.wav and play it
-spectrumize-play song.pt3 --no-play  # just write the .wav
-spectrumize-play song.pt3 --seconds 30   # cap length, looping the song's tail
-spectrumize-play song.pt3 --rate 22050   # faster render (lower fidelity)
-spectrumize-play song.pt3 --tuning equal # equal-tempered instead of the PT3 table
-spectrumize-play song.pt3 --stereo mono  # mono (default abc = A-left/B-centre/C-right)
-spectrumize-play song.pt3 --noise-period 5  # force a noise period (default: the module's real one)
+spectrumizer-play song.pt3            # render song.wav and play it
+spectrumizer-play song.pt3 --no-play  # just write the .wav
+spectrumizer-play song.pt3 --seconds 30   # cap length, looping the song's tail
+spectrumizer-play song.pt3 --rate 22050   # faster render (lower fidelity)
+spectrumizer-play song.pt3 --tuning equal # equal-tempered instead of the PT3 table
+spectrumizer-play song.pt3 --stereo mono  # mono (default abc = A-left/B-centre/C-right)
+spectrumizer-play song.pt3 --noise-period 5  # force a noise period (default: the module's real one)
 ```
 
 The synth (`spectrumizer/audio.py`) plus the PT3 interpreter
@@ -139,7 +139,7 @@ pytest -q
 
 - **Generate:** MIDI → PT3, faithful + chiptune, with velocity-driven dynamics.
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
-  table, real per-frame noise period, ABC panning (`spectrumize-play` / `--play`).
+  table, real per-frame noise period, ABC panning (`spectrumizer-play` / `--play`).
 - **Planned:** MusicXML (music21) input, chord arpeggios, AY hardware envelopes
   (buzzer bass), general PT3 playback (envelope/slides), raw-AY/`.vtx` export.
 

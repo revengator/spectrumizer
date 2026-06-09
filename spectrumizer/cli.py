@@ -1,4 +1,4 @@
-"""spectrumize CLI: MIDI -> PT3."""
+"""spectrumizer CLI: MIDI -> PT3."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ LICENCE_REMINDER = (
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="spectrumize",
+        prog="spectrumizer",
         description="Generate ZX Spectrum AY (PT3) music from a MIDI source.")
     p.add_argument("input", help="input .mid / .midi file")
     p.add_argument("-o", "--output", help="output .pt3 (default: input with .pt3)")
@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
                         "to AY volume (dynamics are on by default).")
     p.add_argument("--play", action="store_true",
                    help="after writing the .pt3, render it to audio and play it "
-                        "(software AY). See also the `spectrumize-play` command.")
+                        "(software AY). See also the `spectrumizer-play` command.")
     p.add_argument("-q", "--quiet", action="store_true",
                    help="suppress the stats summary.")
     return p
@@ -48,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     if not os.path.isfile(args.input):
-        print(f"spectrumize: input not found: {args.input}", file=sys.stderr)
+        print(f"spectrumizer: input not found: {args.input}", file=sys.stderr)
         return 2
 
     out = args.output or (os.path.splitext(args.input)[0] + ".pt3")
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
 
     song = load_midi(args.input)
     if not song.notes and not song.drums:
-        print("spectrumize: no notes found in input.", file=sys.stderr)
+        print("spectrumizer: no notes found in input.", file=sys.stderr)
         return 1
 
     pt3, stats = arrange(
@@ -73,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not args.quiet:
         v = stats["voices"]
-        print(f"spectrumize: {args.input} -> {out}")
+        print(f"spectrumizer: {args.input} -> {out}")
         print(f"  style={stats['style']}  speed={stats['speed']}  "
               f"tempo~{stats['tempo_bpm']}bpm  patterns={stats['patterns']}  "
               f"bytes={stats['bytes']}")
@@ -93,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
         if not args.quiet:
             print(f"  playing {wav} ...")
         if not audio.play_wav(wav):
-            print(f"spectrumize: no system audio player found; open {wav} manually.",
+            print(f"spectrumizer: no system audio player found; open {wav} manually.",
                   file=sys.stderr)
     return 0
 

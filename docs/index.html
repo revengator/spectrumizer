@@ -26,31 +26,31 @@
   <h2>Faithful (3-voice reduction)</h2>
   <p>Straight reduction of the source to lead / bass / harmony.</p>
   <audio controls preload="none" src="audio/faithful.mp3"></audio>
-  <p><code>spectrumize ode-to-joy.mid -o faithful.pt3</code> &middot; <a href="audio/faithful.pt3">download .pt3</a></p>
+  <p><code>spectrumizer ode-to-joy.mid -o faithful.pt3</code> &middot; <a href="audio/faithful.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>Chiptune</h2>
   <p>Octave-doubled lead + synth drums — the default chiptune flavour.</p>
   <audio controls preload="none" src="audio/chiptune.mp3"></audio>
-  <p><code>spectrumize ode-to-joy.mid -o chiptune.pt3 --style chiptune</code> &middot; <a href="audio/chiptune.pt3">download .pt3</a></p>
+  <p><code>spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune</code> &middot; <a href="audio/chiptune.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>No dynamics</h2>
   <p>Flat per-channel volume; compare with the chiptune clip to hear the velocity-driven dynamics.</p>
   <audio controls preload="none" src="audio/chiptune-flat.mp3"></audio>
-  <p><code>spectrumize ode-to-joy.mid --style chiptune --no-dynamics</code> &middot; <a href="audio/chiptune-flat.pt3">download .pt3</a></p>
+  <p><code>spectrumizer ode-to-joy.mid --style chiptune --no-dynamics</code> &middot; <a href="audio/chiptune-flat.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>Equal-tempered tuning</h2>
   <p>Equal temperament instead of the exact PT3 tone table — slightly off from where the chip actually plays.</p>
   <audio controls preload="none" src="audio/chiptune-equal.mp3"></audio>
-  <p><code>spectrumize-play chiptune.pt3 --tuning equal</code> &middot; <a href="audio/chiptune-equal.pt3">download .pt3</a></p>
+  <p><code>spectrumizer-play chiptune.pt3 --tuning equal</code> &middot; <a href="audio/chiptune-equal.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>Mono</h2>
   <p>Mono instead of the default ABC stereo (A-left / B-centre / C-right).</p>
   <audio controls preload="none" src="audio/chiptune-mono.mp3"></audio>
-  <p><code>spectrumize-play chiptune.pt3 --stereo mono</code> &middot; <a href="audio/chiptune-mono.pt3">download .pt3</a></p>
+  <p><code>spectrumizer-play chiptune.pt3 --stereo mono</code> &middot; <a href="audio/chiptune-mono.pt3">download .pt3</a></p>
 </div>
 
 <footer>Regenerate with <code>python examples/make_demos.py</code>.

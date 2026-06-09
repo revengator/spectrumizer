@@ -30,25 +30,25 @@ BITRATE = 128    # kbps; plenty for the AY's simple spectrum
 DEMOS = [
     ("faithful", "Faithful (3-voice reduction)",
      "Straight reduction of the source to lead / bass / harmony.",
-     "spectrumize ode-to-joy.mid -o faithful.pt3",
+     "spectrumizer ode-to-joy.mid -o faithful.pt3",
      dict(style="faithful"), dict()),
     ("chiptune", "Chiptune",
      "Octave-doubled lead + synth drums — the default chiptune flavour.",
-     "spectrumize ode-to-joy.mid -o chiptune.pt3 --style chiptune",
+     "spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune",
      dict(style="chiptune"), dict()),
     ("chiptune-flat", "No dynamics",
      "Flat per-channel volume; compare with the chiptune clip to hear the "
      "velocity-driven dynamics.",
-     "spectrumize ode-to-joy.mid --style chiptune --no-dynamics",
+     "spectrumizer ode-to-joy.mid --style chiptune --no-dynamics",
      dict(style="chiptune", dynamics=False), dict()),
     ("chiptune-equal", "Equal-tempered tuning",
      "Equal temperament instead of the exact PT3 tone table — slightly off "
      "from where the chip actually plays.",
-     "spectrumize-play chiptune.pt3 --tuning equal",
+     "spectrumizer-play chiptune.pt3 --tuning equal",
      dict(style="chiptune"), dict(tuning="equal")),
     ("chiptune-mono", "Mono",
      "Mono instead of the default ABC stereo (A-left / B-centre / C-right).",
-     "spectrumize-play chiptune.pt3 --stereo mono",
+     "spectrumizer-play chiptune.pt3 --stereo mono",
      dict(style="chiptune"), dict(stereo="mono")),
 ]
 

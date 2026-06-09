@@ -1,4 +1,4 @@
-"""spectrumize-play CLI: render / listen to a PT3 module on this machine.
+"""spectrumizer-play CLI: render / listen to a PT3 module on this machine.
 
 Parses a spectrumizer-generated `.pt3`, synthesises it through a small software
 AY (see `spectrumizer.audio`), writes a `.wav`, and plays it with the system
@@ -14,7 +14,7 @@ import sys
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="spectrumize-play",
+        prog="spectrumizer-play",
         description="Render and listen to a spectrumizer PT3 module (AY -> WAV).")
     p.add_argument("input", help="input .pt3 module")
     p.add_argument("-o", "--output",
@@ -47,7 +47,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     if not os.path.isfile(args.input):
-        print(f"spectrumize-play: input not found: {args.input}", file=sys.stderr)
+        print(f"spectrumizer-play: input not found: {args.input}", file=sys.stderr)
         return 2
 
     from .pt3.player import parse_module
@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         module = parse_module(data)
     except ValueError as e:
-        print(f"spectrumize-play: {e}", file=sys.stderr)
+        print(f"spectrumizer-play: {e}", file=sys.stderr)
         return 1
 
     out = args.output or (os.path.splitext(args.input)[0] + ".wav")
@@ -71,13 +71,13 @@ def main(argv: list[str] | None = None) -> int:
     if not args.quiet:
         secs = len(pcm) / channels / args.rate
         title = module.name or "(untitled)"
-        print(f"spectrumize-play: {args.input} -> {out}")
+        print(f"spectrumizer-play: {args.input} -> {out}")
         print(f"  {title!r}  speed={module.speed}  patterns={len(module.patterns)}"
               f"  {secs:.1f}s @ {args.rate} Hz  {args.stereo}")
 
     if not args.no_play:
         if not audio.play_wav(out):
-            print("spectrumize-play: no system audio player found; "
+            print("spectrumizer-play: no system audio player found; "
                   f"open {out} manually.", file=sys.stderr)
     return 0
 

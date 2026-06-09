@@ -29,8 +29,8 @@ dev = ["pytest>=7"]
 demos = ["lameenc>=1.5"]      # MP3 encoder for examples/make_demos.py (pip wheel, no system ffmpeg)
 
 [project.scripts]
-spectrumize = "spectrumizer.cli:main"
-spectrumize-play = "spectrumizer.play:main"
+spectrumizer = "spectrumizer.cli:main"
+spectrumizer-play = "spectrumizer.play:main"
 
 [project.urls]
 Homepage = "https://github.com/revengator/spectrumizer"
