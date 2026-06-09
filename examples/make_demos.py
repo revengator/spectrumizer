@@ -1,8 +1,9 @@
 """Render one demo per use-case into docs/audio/ and build the demos page.
 
-Each clip is examples/ode-to-joy.mid rendered through spectrumizer's own
-software AY, so visitors can hear every mode on the GitHub Pages site
-(docs/index.html) in the browser with nothing to install. MP3s are encoded with
+Most clips are examples/ode-to-joy.mid rendered through spectrumizer's own
+software AY (the buzzer clips use the low-bass examples/bass-groove.mid), so
+visitors can hear every mode on the GitHub Pages site (docs/index.html) in the
+browser with nothing to install. MP3s are encoded with
 `lameenc` — a pip wheel that bundles LAME, so there's no system ffmpeg needed:
 
     pip install -e ".[demos]"      # or: pip install lameenc
@@ -22,6 +23,7 @@ from spectrumizer import audio
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SRC = os.path.join(HERE, "ode-to-joy.mid")
+GROOVE = os.path.join(HERE, "bass-groove.mid")    # low bass — for the buzzer demos
 OUT = os.path.join(ROOT, "docs", "audio")
 RATE = 22050     # smaller files; still well above the AY's useful bandwidth
 BITRATE = 128    # kbps; plenty for the AY's simple spectrum
@@ -37,16 +39,16 @@ DEMOS = [
      "spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune",
      dict(style="chiptune"), dict()),
     ("buzzer", "Buzzer bass (pure envelope)",
-     "Channel B is the AY hardware envelope itself, oscillating at the note "
-     "pitch with the tone off — the characteristic deep AY buzzer. Pitch is "
-     "inherently coarse, so it sits best on low bass lines.",
-     "spectrumizer ode-to-joy.mid --style chiptune --bass envelope",
-     dict(style="chiptune", bass="envelope"), dict()),
+     "An original low-bass groove. Channel B is the AY hardware envelope itself, "
+     "oscillating at the note pitch with the tone off — the characteristic deep "
+     "AY buzzer. Pitch is coarse, so the bass is written low where it resolves.",
+     "spectrumizer bass-groove.mid --style chiptune --bass envelope",
+     dict(style="chiptune", bass="envelope"), dict(), GROOVE),
     ("buzzer-tone", "Buzzer bass (tone + envelope)",
-     "Tone keeps the exact pitch while the hardware envelope adds the buzz — "
-     "pitch-accurate at any register.",
-     "spectrumizer ode-to-joy.mid --style chiptune --bass envelope-tone",
-     dict(style="chiptune", bass="envelope-tone"), dict()),
+     "The same groove with the tone kept on for exact pitch while the hardware "
+     "envelope adds the buzz — pitch-accurate at any register.",
+     "spectrumizer bass-groove.mid --style chiptune --bass envelope-tone",
+     dict(style="chiptune", bass="envelope-tone"), dict(), GROOVE),
     ("chiptune-flat", "No dynamics",
      "Flat per-channel volume; compare with the chiptune clip to hear the "
      "velocity-driven dynamics.",
@@ -86,8 +88,9 @@ _PAGE = """\
 </head>
 <body>
 <h1>spectrumizer — demos</h1>
-<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Every clip is
-<code>examples/ode-to-joy.mid</code> rendered through spectrumizer's software AY.</p>
+<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Most clips are
+<code>examples/ode-to-joy.mid</code> (the buzzer clips use the low-bass
+<code>examples/bass-groove.mid</code>) rendered through spectrumizer's software AY.</p>
 {items}
 <footer>Regenerate with <code>python examples/make_demos.py</code>.
 See the <a href="https://github.com/revengator/spectrumizer">repository</a>.</footer>
@@ -127,9 +130,10 @@ def main() -> None:
                          "(or pip install lameenc)")
 
     os.makedirs(OUT, exist_ok=True)
-    song = load_midi(SRC)
     items = []
-    for slug, title, blurb, cmd, akw, rkw in DEMOS:
+    for entry in DEMOS:
+        slug, title, blurb, cmd, akw, rkw = entry[:6]
+        song = load_midi(entry[6] if len(entry) > 6 else SRC)
         pt3, _ = arrange(song, **akw)
         with open(os.path.join(OUT, slug + ".pt3"), "wb") as f:
             f.write(pt3)

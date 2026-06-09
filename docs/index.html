@@ -20,8 +20,9 @@
 </head>
 <body>
 <h1>spectrumizer — demos</h1>
-<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Every clip is
-<code>examples/ode-to-joy.mid</code> rendered through spectrumizer's software AY.</p>
+<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Most clips are
+<code>examples/ode-to-joy.mid</code> (the buzzer clips use the low-bass
+<code>examples/bass-groove.mid</code>) rendered through spectrumizer's software AY.</p>
 <div class="demo">
   <h2>Faithful (3-voice reduction)</h2>
   <p>Straight reduction of the source to lead / bass / harmony.</p>
@@ -36,15 +37,15 @@
 </div>
 <div class="demo">
   <h2>Buzzer bass (pure envelope)</h2>
-  <p>Channel B is the AY hardware envelope itself, oscillating at the note pitch with the tone off — the characteristic deep AY buzzer. Pitch is inherently coarse, so it sits best on low bass lines.</p>
+  <p>An original low-bass groove. Channel B is the AY hardware envelope itself, oscillating at the note pitch with the tone off — the characteristic deep AY buzzer. Pitch is coarse, so the bass is written low where it resolves.</p>
   <audio controls preload="none" src="audio/buzzer.mp3"></audio>
-  <p><code>spectrumizer ode-to-joy.mid --style chiptune --bass envelope</code> &middot; <a href="audio/buzzer.pt3">download .pt3</a></p>
+  <p><code>spectrumizer bass-groove.mid --style chiptune --bass envelope</code> &middot; <a href="audio/buzzer.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>Buzzer bass (tone + envelope)</h2>
-  <p>Tone keeps the exact pitch while the hardware envelope adds the buzz — pitch-accurate at any register.</p>
+  <p>The same groove with the tone kept on for exact pitch while the hardware envelope adds the buzz — pitch-accurate at any register.</p>
   <audio controls preload="none" src="audio/buzzer-tone.mp3"></audio>
-  <p><code>spectrumizer ode-to-joy.mid --style chiptune --bass envelope-tone</code> &middot; <a href="audio/buzzer-tone.pt3">download .pt3</a></p>
+  <p><code>spectrumizer bass-groove.mid --style chiptune --bass envelope-tone</code> &middot; <a href="audio/buzzer-tone.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>No dynamics</h2>
