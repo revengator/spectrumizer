@@ -103,7 +103,7 @@ def main():
     here = os.path.dirname(__file__)
     files = {
         'ode-to-joy.mid': _build('Ode to Joy', 120, ODE_MELODY, ODE_BASS),
-        'pachelbel-canon.mid': _build('Canon in D', 100, CANON_MELODY, CANON_BASS,
+        'pachelbel-canon.mid': _build('Canon in D', 125, CANON_MELODY, CANON_BASS,
                                       mel_vel=88, bass_vel=104),
     }
     for fname, mid in files.items():
