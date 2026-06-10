@@ -10,6 +10,10 @@ Passes:
     channel implies the whole triad (the classic AY/Follin trick).
   * echo_lead         — a delayed, quieter copy of the lead on a free channel
     (the other classic AY trick).
+  * multiplex_drums_harmony — drums + harmony time-shared on one channel: drum
+    hits (1 row each) win their rows, the harmony fills the gaps and re-attacks
+    right after a hit that lands inside one of its notes (the classic tracker
+    interleave).
 """
 
 from __future__ import annotations
@@ -79,6 +83,34 @@ def chord_arps(notes: list[Note], rows_per_beat: int, total_rows: int,
             opts['vol'] = vol_fn(max(n.velocity for n in group))
         placed.append(Placed(s, e, note_byte, opts))
     return placed
+
+
+def multiplex_drums_harmony(drums: list[Placed],
+                            harmony: list[Placed]) -> list[Placed]:
+    """Time-share one channel between drums and harmony.
+
+    Drums keep their (1-row) onset rows; each harmony note is split into the
+    segments between the drum hits that fall inside it, re-attacking after
+    every hit so the chord keeps sounding. Both voices must carry their own
+    'sample' and 'vol' opts — the segments inherit them, and the encoder
+    switches timbre/volume per event.
+    """
+    drum_rows = {p.start for p in drums}
+    out = list(drums)
+    for h in harmony:
+        s = h.start
+        while s < h.end:
+            if s in drum_rows:              # a drum owns this row: resume after
+                s += 1
+                continue
+            e = h.end
+            for r in range(s + 1, h.end):   # segment ends at the next hit inside
+                if r in drum_rows:
+                    e = r
+                    break
+            out.append(Placed(s, e, h.note, dict(h.opts)))
+            s = e
+    return out
 
 
 def echo_lead(lead: list[Placed], delay_rows: int, total_rows: int,

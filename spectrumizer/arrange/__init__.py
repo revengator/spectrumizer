@@ -3,8 +3,9 @@
 Channel allocation (3 AY channels, A governs pattern length so it gets the lead):
   A = lead (top voice)
   B = bass (bottom voice)
-  C = real drums if the source has them; else synth drums in chiptune style;
-      else the harmony (middle voice) in faithful style.
+  C = real drums if the source has them (the harmony fills the rows between
+      hits); else synth drums in chiptune style; else the harmony (middle
+      voice) in faithful style.
 
 `--style faithful|chiptune` selects which passes run — same engine, composable
 passes, not two code paths.
@@ -22,7 +23,8 @@ from ..pt3 import (
 from .model import Placed, rasterize, pack_patterns, ROWS_PER_PATTERN
 from .quantize import plan_grid, note_rows
 from .reduce import assign_voices
-from .embellish import octave_short_lead, synth_drums, chord_arps, echo_lead
+from .embellish import (octave_short_lead, synth_drums, chord_arps, echo_lead,
+                        multiplex_drums_harmony)
 
 # GM percussion keys we treat as a kick (everything else on ch10 -> snare).
 GM_KICK_KEYS = {35, 36}
@@ -100,10 +102,12 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     speed_v, total_rows = plan_grid(song, rows_per_beat, speed)
 
     # Channel C: drums win; then arps; then echo; then synth-drums / harmony.
+    # With real drums the harmony is multiplexed into the gaps between hits,
+    # so the reduction still extracts 3 voices in that case.
     arps = arps and not song.has_drums
     echo = echo and not song.has_drums and not arps
-    use_drum_channel = song.has_drums or style == 'chiptune' or arps or echo
-    n_pitched = 2 if use_drum_channel else 3
+    c_exclusive = arps or echo or (style == 'chiptune' and not song.has_drums)
+    n_pitched = 2 if c_exclusive else 3
     lead, bass_line, harmony = assign_voices(song.notes, n_pitched)
 
     buzzer = bass in ('envelope', 'envelope-tone')
@@ -122,8 +126,19 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
 
     if song.has_drums:
         dmax = max((n.velocity for n in song.drums), default=0) if dynamics else 0
-        c_p = _drums_to_placed(song.drums, rows_per_beat, total_rows, 13, dmax)
-        c_sample, c_vol, c_kind = S_SNARE, 13, 'drums'
+        drums_p = _drums_to_placed(song.drums, rows_per_beat, total_rows, 13, dmax)
+        harm_p = _line_to_placed(harmony, rows_per_beat, total_rows, transpose,
+                                 10, vmax)
+        # both voices share the channel, so every event states its own timbre
+        # and volume (the encoder only emits tokens on change)
+        for p in drums_p:
+            p.opts.setdefault('vol', 13)
+        for p in harm_p:
+            p.opts['sample'] = S_HARMONY
+            p.opts.setdefault('vol', 10)
+        c_p = multiplex_drums_harmony(drums_p, harm_p)
+        c_sample, c_vol = S_SNARE, 13
+        c_kind = 'drums+harmony' if harm_p else 'drums'
     elif arps:
         vol_fn = (lambda v: vol_from_velocity(v, 10, vmax)) if vmax > 0 else None
         c_p = chord_arps(song.notes, rows_per_beat, total_rows, transpose, vol_fn)
@@ -182,7 +197,8 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         'tempo_bpm': round(song.tempo_bpm, 1),
         'voices': {'lead': len(lead), 'bass': len(bass_line),
                    'channel_c': c_kind,
-                   'harmony': len(harmony) if c_kind == 'harmony' else 0,
+                   'harmony': (len(harmony)
+                               if c_kind in ('harmony', 'drums+harmony') else 0),
                    'arp': len(c_p) if c_kind == 'arp' else 0,
                    'echo': len(c_p) if c_kind == 'echo' else 0,
                    'drums': len(song.drums)},

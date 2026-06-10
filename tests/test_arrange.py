@@ -65,8 +65,26 @@ def test_drums_take_channel_c():
     song = _chord_song()
     song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
     _, stats = arrange(song, style='faithful')
-    assert stats['voices']['channel_c'] == 'drums'
+    assert stats['voices']['channel_c'] == 'drums+harmony'
     assert stats['voices']['drums'] == 8
+    assert stats['voices']['harmony'] > 0      # multiplexed, not dropped
+
+
+def test_drums_multiplex_harmony_on_channel_c():
+    from spectrumizer.pt3 import S_KICK, S_HARMONY
+    song = _chord_song()                       # lead 72 / harmony 67 / bass 48
+    song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
+    pt3, stats = arrange(song, style='faithful', dynamics=False)
+    onsets = {r: ev for r, ev in enumerate(parse_module(pt3).patterns[0][2])
+              if ev is not None and ev.note is not None}
+    for b in range(8):
+        # the kick keeps its row, the harmony re-attacks right after the hit,
+        # each with its own sample and volume
+        assert onsets[b * 4].sample == S_KICK and onsets[b * 4].vol == 13
+        assert onsets[b * 4 + 1].sample == S_HARMONY and onsets[b * 4 + 1].vol == 10
+    for (a, b_, c) in _pattern_channel_addrs(pt3, stats['patterns']):
+        for addr in (a, b_, c):
+            assert decode_row_count(pt3[addr:]) == ROWS_PER_PATTERN
 
 
 def test_valid_pt3_header():
@@ -175,7 +193,8 @@ def test_real_drums_outrank_arps_on_channel_c():
     song = _triad_song()
     song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
     _, stats = arrange(song, style='chiptune', arps=True)
-    assert stats['voices']['channel_c'] == 'drums'   # drums win over arps
+    # drums win over arps (the harmony multiplexes into their gaps)
+    assert stats['voices']['channel_c'].startswith('drums')
 
 
 def test_identical_patterns_are_deduplicated():
@@ -249,7 +268,7 @@ def test_channel_c_priority_drums_then_arps_then_echo():
     assert stats['voices']['channel_c'] == 'arp'      # arps outrank echo
     song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
     _, stats = arrange(song, style='faithful', arps=True, echo=True)
-    assert stats['voices']['channel_c'] == 'drums'    # drums outrank both
+    assert stats['voices']['channel_c'].startswith('drums')   # drums outrank both
 
 
 def test_arps_recognise_humanised_chords():

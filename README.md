@@ -101,9 +101,10 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
     envelope** at each note's pitch (the deep AY buzzer; pitch is coarse, best
     low). `--bass envelope-tone` keeps the tone for exact pitch and uses the
     envelope only for the buzz.
-  - Channel allocation: **A = lead, B = bass, C =** real drums if present, else
-    chord arps (`--arps`), else echo (`--echo`), else synth drums (chiptune),
-    else harmony (faithful).
+  - Channel allocation: **A = lead, B = bass, C =** real drums if present
+    (the harmony fills the rows between hits — drums and chords time-share the
+    channel), else chord arps (`--arps`), else echo (`--echo`), else synth
+    drums (chiptune), else harmony (faithful).
   - pattern dedup — identical 64-row patterns are stored once and replayed
     through the PT3 position list (repeats cost 1 byte, not a pattern).
 - **`spectrumizer/ir.py`** — the source-agnostic note model both inputs target.
@@ -198,8 +199,6 @@ pytest -q
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
 - **Planned:**
-  - **Drums + harmony multiplexed on channel C** — drum hits last one row, so
-    the harmony can fill the gaps instead of being dropped when a song has drums.
   - **Sample vibrato/detune** — PT3 samples carry per-tick tone offsets
     (unused so far): sub-semitone vibrato for the lead, free at the sample level.
   - **Richer percussion** — hi-hats (GM 42/44/46) and synth-drum pattern

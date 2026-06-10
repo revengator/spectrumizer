@@ -100,8 +100,8 @@ def main(argv: list[str] | None = None) -> int:
               f"bytes={stats['bytes']}")
         b_label = {'envelope': 'buzzer',
                    'envelope-tone': 'buzzer+tone'}.get(stats['bass'], 'bass')
-        c_count = {'harmony': v['harmony'], 'arp': v['arp'],
-                   'echo': v['echo']}.get(v['channel_c'])
+        c_count = {'harmony': v['harmony'], 'arp': v['arp'], 'echo': v['echo'],
+                   'drums+harmony': v['harmony']}.get(v['channel_c'])
         print(f"  A=lead({v['lead']})  B={b_label}({v['bass']})  "
               f"C={v['channel_c']}"
               + (f"({c_count})" if c_count else "")
