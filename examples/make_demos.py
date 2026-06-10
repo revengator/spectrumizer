@@ -70,6 +70,14 @@ DEMOS = [
      "Mono instead of the default ABC stereo (A-left / B-centre / C-right).",
      "spectrumizer-play chiptune.pt3 --stereo mono",
      dict(style="chiptune"), dict(stereo="mono")),
+    ("combo", "Everything at once",
+     "Pachelbel's Canon with the flags combined: chiptune octave lead on A, "
+     "tone+envelope buzzer bass on B and chord arpeggios on C — the whole "
+     "piece an octave down, at flat volume.",
+     "spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone "
+     "--arps --transpose -12 --no-dynamics",
+     dict(style="chiptune", bass="envelope-tone", arps=True, transpose=-12,
+          dynamics=False), dict(), CANON),
 ]
 
 _PAGE = """\

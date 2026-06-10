@@ -170,6 +170,7 @@ where envelope bass shines). Regenerate with `pip install -e ".[demos]" && pytho
 | ▶ [No dynamics](docs/audio/chiptune-flat.mp3) | flat volume — vs the velocity dynamics |
 | ▶ [Equal-tempered](docs/audio/chiptune-equal.mp3) | vs the exact PT3 tone table |
 | ▶ [Mono](docs/audio/chiptune-mono.mp3) | vs the default ABC stereo |
+| ▶ [Everything at once](docs/audio/combo.mp3) | flags combined: octave lead + buzzer bass + arps (`--style chiptune --bass envelope-tone --arps --transpose -12 --no-dynamics`) |
 
 ## Tests
 
