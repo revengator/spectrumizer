@@ -18,7 +18,7 @@ from ..pt3 import (
     midi_to_pt3_byte, NOTE_TO_BYTE, build_pt3,
     DEFAULT_SAMPLES, DEFAULT_ORNAMENTS,
     S_LEAD, S_BASS, S_HARMONY, S_SNARE, S_KICK, S_BUZZER, S_BUZZER_TONE,
-    ORN_EMPTY, envelope_period_for,
+    S_LEAD_VIB, ORN_EMPTY, envelope_period_for,
 )
 from .model import Placed, rasterize, pack_patterns, ROWS_PER_PATTERN
 from .quantize import plan_grid, note_rows
@@ -81,7 +81,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
             name: str | None = None, author: str = 'SPECTRUMIZER',
             loop_pos: int = 0, dynamics: bool = True,
             bass: str = 'normal', arps: bool = False,
-            echo: bool = False) -> tuple[bytes, dict]:
+            echo: bool = False, vibrato: bool = False) -> tuple[bytes, dict]:
     """Arrange `song` and return (pt3_bytes, stats).
 
     `dynamics`: map MIDI velocity to per-note AY volume (on by default); the
@@ -98,6 +98,10 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     `echo`: route channel C to a delayed, quieter copy of the lead (the classic
     AY echo: half a beat later at ~8/15 volume, same timbre). Outranked by real
     drums and by `arps`.
+    `vibrato`: give the lead (and an echo, which mirrors its timbre) the
+    delayed-vibrato sample — the sustain wobbles the tone period ±3 units at
+    6.25 Hz, encoded per tick inside the sample so it costs nothing in the
+    patterns.
     """
     speed_v, total_rows = plan_grid(song, rows_per_beat, speed)
 
@@ -113,6 +117,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     buzzer = bass in ('envelope', 'envelope-tone')
     bass_sample = {'envelope': S_BUZZER,
                    'envelope-tone': S_BUZZER_TONE}.get(bass, S_BASS)
+    lead_sample = S_LEAD_VIB if vibrato else S_LEAD
     tone_table = None
     if buzzer:
         from ..audio import build_pt3_table     # the exact PT3 tone periods
@@ -145,7 +150,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         c_sample, c_vol, c_kind = S_HARMONY, 10, 'arp'
     elif echo:
         c_p = []                        # built below, after the lead embellishment
-        c_sample, c_vol, c_kind = S_LEAD, 8, 'echo'
+        c_sample, c_vol, c_kind = lead_sample, 8, 'echo'
     elif style == 'chiptune':
         c_p = synth_drums(total_rows, rows_per_beat, DRUM_NOTE_BYTE, S_SNARE, S_KICK)
         c_sample, c_vol, c_kind = S_SNARE, 13, 'synth-drums'
@@ -160,7 +165,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
                         max(1, rows_per_beat // 2), total_rows)
 
     specs = [
-        (rasterize(lead_p, total_rows), S_LEAD, 15, ORN_EMPTY),
+        (rasterize(lead_p, total_rows), lead_sample, 15, ORN_EMPTY),
         (rasterize(bass_p, total_rows), bass_sample, 14, ORN_EMPTY),
         (rasterize(c_p, total_rows), c_sample, c_vol, ORN_EMPTY),
     ]
@@ -189,6 +194,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         'bass': bass,
         'arps': arps,
         'echo': echo,
+        'vibrato': vibrato,
         'speed': speed_v,
         'rows_per_beat': rows_per_beat,
         'total_rows': total_rows,

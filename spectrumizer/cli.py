@@ -54,6 +54,11 @@ def build_parser() -> argparse.ArgumentParser:
                              "later, quieter — the classic AY echo. Replaces "
                              "the harmony / synth-drums voice (real drums "
                              "still win channel C).")
+    p.add_argument("--vibrato", action="store_true",
+                   help="delayed vibrato on the lead: after the attack, the "
+                        "sustain wobbles the tone period (±3 units at 6.25 Hz), "
+                        "encoded inside the PT3 sample so it costs nothing in "
+                        "the patterns. An --echo inherits it.")
     p.add_argument("--play", action="store_true",
                    help="after writing the .pt3, render it to audio and play it "
                         "(software AY). See also the `spectrumizer-play` command.")
@@ -84,7 +89,8 @@ def main(argv: list[str] | None = None) -> int:
         song, style=args.style, rows_per_beat=args.rows_per_beat,
         speed=args.speed, transpose=args.transpose,
         name=args.name, author=args.author, loop_pos=args.loop_pos,
-        dynamics=args.dynamics, bass=args.bass, arps=args.arps, echo=args.echo)
+        dynamics=args.dynamics, bass=args.bass, arps=args.arps, echo=args.echo,
+        vibrato=args.vibrato)
 
     with open(out, "wb") as f:
         f.write(pt3)

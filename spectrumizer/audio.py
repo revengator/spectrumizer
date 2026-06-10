@@ -139,12 +139,13 @@ def render_pcm(module: Module, *, sample_rate: int = DEFAULT_RATE,
         # channel is kept even at sample amplitude 0 — the envelope feeds it.
         ch = []
         any_env = False
-        for note_idx, amp, tone_on, noise_on, use_env in frame:
+        for note_idx, amp, tone_on, noise_on, use_env, tone_ofs in frame:
             if note_idx is None or (amp <= 0 and not use_env):
                 ch.append(None)
                 continue
             period = periods[note_idx] if 0 <= note_idx < 96 \
                 else periods[max(0, min(95, note_idx))]
+            period = max(1, period + tone_ofs)   # sample vibrato/detune delta
             inc = (AY_CLOCK / (16.0 * period)) / sample_rate
             ch.append((inc, AY_VOL[amp], tone_on, noise_on, use_env))
             any_env = any_env or use_env

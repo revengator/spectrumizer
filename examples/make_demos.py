@@ -57,6 +57,12 @@ DEMOS = [
      "quieter — the other classic AY trick.",
      "spectrumizer ode-to-joy.mid --echo",
      dict(echo=True), dict()),
+    ("vibrato", "Vibrato lead",
+     "Ode to Joy with --vibrato: after each note's attack the lead's sustain "
+     "wobbles the tone period sub-semitone at 6.25 Hz. The offsets ride inside "
+     "the PT3 sample, so the vibrato costs nothing in the patterns.",
+     "spectrumizer ode-to-joy.mid --vibrato",
+     dict(vibrato=True), dict()),
     ("drums", "Real drums + harmony",
      "Korobeiniki — the public-domain Russian folk song behind Tetris — with a "
      "real GM drum track. Drums win channel C, but the chord voice fills the "
@@ -91,13 +97,13 @@ DEMOS = [
      "spectrumizer-play chiptune.pt3 --stereo mono",
      dict(style="chiptune"), dict(stereo="mono")),
     ("combo", "Everything at once",
-     "Pachelbel's Canon with the flags combined: chiptune octave lead on A, "
-     "tone+envelope buzzer bass on B and chord arpeggios on C — the whole "
-     "piece an octave down, at flat volume.",
+     "Pachelbel's Canon with the flags combined: chiptune octave lead with "
+     "vibrato on A, tone+envelope buzzer bass on B and chord arpeggios on C — "
+     "the whole piece an octave down, at flat volume.",
      "spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone "
-     "--arps --transpose -12 --no-dynamics",
-     dict(style="chiptune", bass="envelope-tone", arps=True, transpose=-12,
-          dynamics=False), dict(), CANON),
+     "--arps --vibrato --transpose -12 --no-dynamics",
+     dict(style="chiptune", bass="envelope-tone", arps=True, vibrato=True,
+          transpose=-12, dynamics=False), dict(), CANON),
 ]
 
 _PAGE = """\

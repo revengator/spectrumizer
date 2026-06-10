@@ -50,6 +50,12 @@ in any Spectrum emulator to hear the real player.</p>
   <p><code>spectrumizer ode-to-joy.mid --echo</code> &middot; <a href="audio/echo.pt3">download .pt3</a> &middot; <a href="audio/echo.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
+  <h2>Vibrato lead</h2>
+  <p>Ode to Joy with --vibrato: after each note&#x27;s attack the lead&#x27;s sustain wobbles the tone period sub-semitone at 6.25 Hz. The offsets ride inside the PT3 sample, so the vibrato costs nothing in the patterns.</p>
+  <audio controls preload="none" src="audio/vibrato.mp3"></audio>
+  <p><code>spectrumizer ode-to-joy.mid --vibrato</code> &middot; <a href="audio/vibrato.pt3">download .pt3</a> &middot; <a href="audio/vibrato.sna">.sna for an emulator</a></p>
+</div>
+<div class="demo">
   <h2>Real drums + harmony</h2>
   <p>Korobeiniki — the public-domain Russian folk song behind Tetris — with a real GM drum track. Drums win channel C, but the chord voice fills the rows between hits and re-attacks after each one, so the percussion costs almost no harmony.</p>
   <audio controls preload="none" src="audio/drums.mp3"></audio>
@@ -87,9 +93,9 @@ in any Spectrum emulator to hear the real player.</p>
 </div>
 <div class="demo">
   <h2>Everything at once</h2>
-  <p>Pachelbel&#x27;s Canon with the flags combined: chiptune octave lead on A, tone+envelope buzzer bass on B and chord arpeggios on C — the whole piece an octave down, at flat volume.</p>
+  <p>Pachelbel&#x27;s Canon with the flags combined: chiptune octave lead with vibrato on A, tone+envelope buzzer bass on B and chord arpeggios on C — the whole piece an octave down, at flat volume.</p>
   <audio controls preload="none" src="audio/combo.mp3"></audio>
-  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone --arps --transpose -12 --no-dynamics</code> &middot; <a href="audio/combo.pt3">download .pt3</a> &middot; <a href="audio/combo.sna">.sna for an emulator</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone --arps --vibrato --transpose -12 --no-dynamics</code> &middot; <a href="audio/combo.pt3">download .pt3</a> &middot; <a href="audio/combo.sna">.sna for an emulator</a></p>
 </div>
 
 <footer>Regenerate with <code>python examples/make_demos.py</code>.

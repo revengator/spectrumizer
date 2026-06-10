@@ -310,3 +310,22 @@ def test_pattern_boundary_reattack_keeps_arp_ornament():
     assert stats['patterns'] >= 2
     reattack = parse_module(pt3).patterns[1][2][0]
     assert reattack is not None and reattack.ornament == ORN_MAJOR
+
+
+def test_vibrato_swaps_the_lead_sample():
+    from spectrumizer.pt3 import S_LEAD, S_LEAD_VIB
+    song = _chord_song()
+    plain, _ = arrange(song)
+    vib, sv = arrange(song, vibrato=True)
+    assert sv['vibrato'] is True
+    lead = [ev for ev in parse_module(vib).patterns[0][0]
+            if ev is not None and ev.note is not None]
+    assert lead and all(ev.sample == S_LEAD_VIB for ev in lead)
+    lead_plain = [ev for ev in parse_module(plain).patterns[0][0]
+                  if ev is not None and ev.note is not None]
+    assert all(ev.sample == S_LEAD for ev in lead_plain)
+    # an echo mirrors the lead's timbre, so it inherits the vibrato sample
+    eco, _ = arrange(song, echo=True, vibrato=True)
+    c_evs = [ev for ev in parse_module(eco).patterns[0][2]
+             if ev is not None and ev.note is not None]
+    assert c_evs and all(ev.sample == S_LEAD_VIB for ev in c_evs)

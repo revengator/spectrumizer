@@ -60,8 +60,8 @@ def test_frame_count_matches_speed():
     frames = list(iter_frames(module))
     assert len(frames) == ROWS * 6            # 64 rows * 6 frames/row
     # each frame is (channels, noise_period, envelope) with 3 channels, and each
-    # channel is a 5-tuple (note, amp, tone_on, noise_on, use_env)
-    assert all(len(f) == 3 and len(f[0]) == 3 and len(f[0][0]) == 5 for f in frames)
+    # channel is a 6-tuple (note, amp, tone_on, noise_on, use_env, tone_ofs)
+    assert all(len(f) == 3 and len(f[0]) == 3 and len(f[0][0]) == 6 for f in frames)
 
 
 def test_noise_period_is_derived_not_fixed():
@@ -241,3 +241,28 @@ def test_envelope_period_for_pitch():
     assert envelope_period_for(64, 10) >= 1                        # never below 1
     # a deeper note (larger tone period) maps to a larger envelope period
     assert envelope_period_for(3344, 10) > envelope_period_for(836, 10)
+
+
+def test_vibrato_sample_encodes_tone_offsets():
+    from spectrumizer.pt3.player import parse_sample
+    from spectrumizer.pt3 import samples as smp
+    vib = parse_sample(smp.build_lead_vibrato(), 0)
+    assert vib.loop == 8
+    assert [t[6] for t in vib.ticks[:8]] == [0] * 8            # steady attack
+    assert [t[6] for t in vib.ticks[8:]] == [0, 2, 3, 2, 0, -2, -3, -2]
+    assert not any(t[7] for t in vib.ticks)                    # no TnAcc use
+
+
+def test_vibrato_wobbles_the_tone_period():
+    from spectrumizer.pt3 import S_LEAD_VIB
+    a = encode_channel(_cells({0: 'A-4'}), default_sample=S_LEAD_VIB,
+                       default_volume=15)
+    b = encode_channel(_cells({0: 'C-3'}), default_sample=2, default_volume=14)
+    c = encode_channel(_cells({0: 'C-5'}), default_sample=3, default_volume=10)
+    pt3 = build_pt3([(a, b, c)], dict(DEFAULT_SAMPLES), dict(DEFAULT_ORNAMENTS),
+                    name="VIB", speed=6)
+    frames = list(iter_frames(parse_module(pt3)))
+    offs = [fr[0][0][5] for fr in frames[:24]]    # channel A tone_ofs per tick
+    assert offs[:8] == [0] * 8                    # delayed: the attack is steady
+    assert offs[8:16] == [0, 2, 3, 2, 0, -2, -3, -2]   # one triangle cycle
+    assert offs[16:24] == offs[8:16]              # ... that loops

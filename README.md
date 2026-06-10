@@ -70,6 +70,9 @@ spectrumizer song.mid --arps
 # echo: channel C repeats the lead half a beat later, quieter (the other classic)
 spectrumizer song.mid --echo
 
+# delayed vibrato on the lead (sub-semitone, encoded inside the PT3 sample)
+spectrumizer song.mid --vibrato
+
 # generate and immediately hear it (renders through a software AY, then plays)
 spectrumizer song.mid -o song.pt3 --play
 ```
@@ -101,6 +104,10 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
     quieter, on channel C.
   - dynamics — MIDI velocity → per-note AY volume, normalised so the piece's
     loudest note hits each channel's ceiling (on by default; `--no-dynamics`).
+  - vibrato (`--vibrato`) — the lead's sustain wobbles the tone period (±3
+    units at 6.25 Hz, delayed past the attack). PT3 samples carry a signed
+    per-tick tone offset, so the vibrato lives inside the instrument and
+    costs nothing in the patterns; an `--echo` inherits it.
   - buzzer bass — `--bass envelope` routes channel B through the AY **hardware
     envelope** at each note's pitch (the deep AY buzzer; pitch is coarse, best
     low). `--bass envelope-tone` keeps the tone for exact pitch and uses the
@@ -184,13 +191,14 @@ with `pip install -e ".[demos]" && python examples/make_demos.py`.
 | ▶ [Chiptune](docs/audio/chiptune.mp3) | octave lead + synth drums |
 | ▶ [Chord arpeggios](docs/audio/arps.mp3) | triads faked on one channel via 50 Hz ornaments (`--arps`) |
 | ▶ [Echo](docs/audio/echo.mp3) | the lead repeated half a beat later, quieter (`--echo`) |
+| ▶ [Vibrato](docs/audio/vibrato.mp3) | delayed sub-semitone vibrato, encoded inside the sample (`--vibrato`) |
 | ▶ [Real drums + harmony](docs/audio/drums.mp3) | a GM drum track and the chords time-sharing channel C |
 | ▶ [Buzzer (pure)](docs/audio/buzzer.mp3) | bass = the AY hardware envelope, tone off (`--bass envelope`) |
 | ▶ [Buzzer (tone+env)](docs/audio/buzzer-tone.mp3) | envelope buzz, tone keeps the pitch (`--bass envelope-tone`) |
 | ▶ [No dynamics](docs/audio/chiptune-flat.mp3) | flat volume — vs the velocity dynamics |
 | ▶ [Equal-tempered](docs/audio/chiptune-equal.mp3) | vs the exact PT3 tone table |
 | ▶ [Mono](docs/audio/chiptune-mono.mp3) | vs the default ABC stereo |
-| ▶ [Everything at once](docs/audio/combo.mp3) | the flags compose: octave lead + buzzer bass + arps, an octave down |
+| ▶ [Everything at once](docs/audio/combo.mp3) | the flags compose: octave lead + vibrato + buzzer bass + arps, an octave down |
 
 Every demo also ships as an **executable 128K snapshot** in
 [`docs/audio/`](docs/audio/) (`<demo>.sna`, made with `spectrumizer-pack`) —
@@ -208,16 +216,15 @@ pytest -q
 ## Status
 
 - **Generate:** MIDI → PT3, faithful + chiptune, velocity-driven dynamics,
-  **chord arpeggios** (`--arps`), **echo** (`--echo`), and **buzzer bass**
-  through the AY hardware envelope (`--bass envelope` / `envelope-tone`).
+  **chord arpeggios** (`--arps`), **echo** (`--echo`), **lead vibrato**
+  (`--vibrato`), and **buzzer bass** through the AY hardware envelope
+  (`--bass envelope` / `envelope-tone`).
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
   table, real per-frame noise period, ABC panning, and the AY **hardware
   envelope generator** (`spectrumizer-play` / `--play`).
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
 - **Planned:**
-  - **Sample vibrato/detune** — PT3 samples carry per-tick tone offsets
-    (unused so far): sub-semitone vibrato for the lead, free at the sample level.
   - **Richer percussion** — hi-hats (GM 42/44/46) and synth-drum pattern
     variety beyond the fixed 4/4 backbeat.
   - **Arps v2** — 7th/sus ornaments, configurable arpeggio speed.

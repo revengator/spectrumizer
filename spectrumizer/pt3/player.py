@@ -7,8 +7,9 @@ drive an AY synthesiser (see `spectrumizer.audio`).
 
 It is **not** a full Vortex Tracker player — it understands exactly the tokens
 `encode_channel` writes plus the AY hardware-envelope tokens (so buzzer-bass
-modules can be auditioned), and nothing else (no glissando, vibrato,
-noise-period commands). That is enough to audition anything spectrumizer makes.
+modules can be auditioned), and nothing else (no pattern-command glissando /
+vibrato / noise-period; sample-level tone offsets — the vibrato samples — ARE
+honoured). That is enough to audition anything spectrumizer makes.
 """
 
 from __future__ import annotations
@@ -22,13 +23,16 @@ FRAME_HZ = 50
 class ParsedSample:
     """A PT3 instrument as per-tick timbre + loop point.
 
-    Each tick is (tone_on, noise_on, amp, noise_path, noise_add, persist):
-    the mixer gates, the amplitude, and the noise-period contribution — a tick
-    on the noise path (byte1 bit7 == 0) drives the AY noise register by
-    ``byte0 >> 1`` (+ a persisted slide if byte1 bit5 is set).
+    Each tick is (tone_on, noise_on, amp, noise_path, noise_add, persist,
+    tone_add, tone_acc): the mixer gates, the amplitude, the noise-period
+    contribution — a tick on the noise path (byte1 bit7 == 0) drives the AY
+    noise register by ``byte0 >> 1`` (+ a persisted slide if byte1 bit5 is
+    set) — and the tone offset: a signed period delta (bytes 2-3) added to
+    the note's tone period while the tick plays (vibrato/detune); with
+    `tone_acc` (byte1 bit6) it also accumulates across ticks (CHP.TnAcc).
     """
     loop: int
-    ticks: list  # list[tuple[bool, bool, int, bool, int, bool]]
+    ticks: list  # list[tuple[bool, bool, int, bool, int, bool, int, bool]]
 
     def at(self, pos: int):
         return self.ticks[pos] if pos < len(self.ticks) else self.ticks[-1]
@@ -76,7 +80,8 @@ class Module:
 
 
 # --- the default timbres, parsed once so a header with addr 0 still plays ---
-_DEFAULT_SAMPLE_FALLBACK = ParsedSample(0, [(True, False, 12, False, 0, False)])
+_DEFAULT_SAMPLE_FALLBACK = ParsedSample(0, [(True, False, 12, False, 0, False,
+                                             0, False)])
 _DEFAULT_ORNAMENT_FALLBACK = ParsedOrnament(0, [0])
 
 
@@ -106,7 +111,12 @@ def parse_sample(data: bytes, addr: int) -> ParsedSample:
         noise_path = (b1 & 0x80) == 0     # bit7=0 -> this tick drives the noise period
         noise_add = (b0 >> 1) & 0xFF      # byte0 -> AddToNs contribution
         persist = (b1 & 0x20) != 0        # bit5 -> persist the noise slide (CrNsSl)
-        ticks.append((tone_on, noise_on, b1 & 0x0F, noise_path, noise_add, persist))
+        tone_add = _u16(data, p + 2)      # bytes 2-3: signed tone-period delta
+        if tone_add >= 0x8000:
+            tone_add -= 0x10000
+        tone_acc = (b1 & 0x40) != 0       # bit6 -> accumulate it (CHP.TnAcc)
+        ticks.append((tone_on, noise_on, b1 & 0x0F, noise_path, noise_add, persist,
+                      tone_add, tone_acc))
         p += 4
     return ParsedSample(min(loop, length - 1), ticks)
 
@@ -228,6 +238,7 @@ class _Chan:
     s_pos: int = 0
     o_pos: int = 0
     cr_ns_sl: int = 0            # persisted noise slide (CrNsSl)
+    tn_acc: int = 0              # accumulated tone offset (TnAcc); reset per note
     env: tuple | None = None     # (shape, period) while this channel uses the env
 
 
@@ -248,11 +259,13 @@ def iter_frames(module: Module, *, loops: int = 1, max_seconds: float | None = N
     """Yield, per 50 Hz frame, ``(channels, noise_period, envelope)``.
 
     `channels` is a list of 3 tuples
-    ``(note_index | None, amplitude 0..15, tone_on, noise_on, use_env)`` —
-    `note_index` is the semitone index (0 == PT3 C-1) after the ornament offset,
-    amplitude already folds the channel volume into the sample amplitude, and
-    `use_env` is True while that channel is driven by the AY hardware envelope
-    (its amplitude is then ignored — the envelope level is used instead).
+    ``(note_index | None, amplitude 0..15, tone_on, noise_on, use_env,
+    tone_ofs)`` — `note_index` is the semitone index (0 == PT3 C-1) after the
+    ornament offset, amplitude already folds the channel volume into the
+    sample amplitude, `use_env` is True while that channel is driven by the AY
+    hardware envelope (its amplitude is then ignored — the envelope level is
+    used instead), and `tone_ofs` is the sample tick's tone-period delta
+    (vibrato/detune; add it to the looked-up period, positive = flatter).
 
     `noise_period` is the AY noise register R6 the real player would write this
     frame: ``Ns_Base + AddToNs`` (0..255; the chip uses the low 5 bits, and 0
@@ -294,7 +307,7 @@ def iter_frames(module: Module, *, loops: int = 1, max_seconds: float | None = N
                 else:
                     cs.note, cs.active = ev.note, True
                     cs.sample, cs.ornament, cs.vol = ev.sample, ev.ornament, ev.vol
-                    cs.s_pos = cs.o_pos = 0
+                    cs.s_pos = cs.o_pos = cs.tn_acc = 0
             # the AY has a single envelope generator: the highest channel that
             # currently uses it wins its period/shape.
             env_ps = next((c.env for c in reversed(chans) if c.env is not None), None)
@@ -305,15 +318,19 @@ def iter_frames(module: Module, *, loops: int = 1, max_seconds: float | None = N
                 for ci in range(3):              # A, B, C order: last noise tick wins
                     cs = chans[ci]
                     if not cs.active or cs.note is None:
-                        frame.append((None, 0, False, False, False))
+                        frame.append((None, 0, False, False, False, 0))
                         continue
                     samp = module.samples.get(cs.sample, _DEFAULT_SAMPLE_FALLBACK)
                     orn = module.ornaments.get(cs.ornament, _DEFAULT_ORNAMENT_FALLBACK)
-                    tone_on, noise_on, s_amp, noise_path, noise_add, persist = \
-                        samp.at(cs.s_pos)
+                    (tone_on, noise_on, s_amp, noise_path, noise_add, persist,
+                     tone_add, tone_acc) = samp.at(cs.s_pos)
                     note_idx = (cs.note - 0x50) + orn.at(cs.o_pos)
                     amp = (s_amp * cs.vol) // 15
-                    frame.append((note_idx, amp, tone_on, noise_on, cs.env is not None))
+                    tone_ofs = tone_add + cs.tn_acc   # like the player: tick delta
+                    if tone_acc:                      # + TnAcc, stored back if bit6
+                        cs.tn_acc = tone_ofs
+                    frame.append((note_idx, amp, tone_on, noise_on,
+                                  cs.env is not None, tone_ofs))
                     if noise_path:               # this tick drives the AY noise period
                         add_to_ns = (noise_add + cs.cr_ns_sl) & 0xFF
                         if persist:
