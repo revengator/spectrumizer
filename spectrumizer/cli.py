@@ -42,6 +42,11 @@ def build_parser() -> argparse.ArgumentParser:
                         "bass — the AY hardware envelope is the oscillator; deep, "
                         "coarse pitch), or 'envelope-tone' (tone keeps the pitch, "
                         "envelope adds the buzz — accurate at any register).")
+    p.add_argument("--arps", action="store_true",
+                   help="chord arpeggios on channel C: play each source chord's "
+                        "root and cycle a major/minor ornament at 50 Hz to fake "
+                        "the full triad on one channel. Replaces the harmony / "
+                        "synth-drums voice (real drums still win channel C).")
     p.add_argument("--play", action="store_true",
                    help="after writing the .pt3, render it to audio and play it "
                         "(software AY). See also the `spectrumizer-play` command.")
@@ -72,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         song, style=args.style, rows_per_beat=args.rows_per_beat,
         speed=args.speed, transpose=args.transpose,
         name=args.name, author=args.author, loop_pos=args.loop_pos,
-        dynamics=args.dynamics, bass=args.bass)
+        dynamics=args.dynamics, bass=args.bass, arps=args.arps)
 
     with open(out, "wb") as f:
         f.write(pt3)
@@ -85,9 +90,10 @@ def main(argv: list[str] | None = None) -> int:
               f"bytes={stats['bytes']}")
         b_label = {'envelope': 'buzzer',
                    'envelope-tone': 'buzzer+tone'}.get(stats['bass'], 'bass')
+        c_count = {'harmony': v['harmony'], 'arp': v['arp']}.get(v['channel_c'])
         print(f"  A=lead({v['lead']})  B={b_label}({v['bass']})  "
               f"C={v['channel_c']}"
-              + (f"({v['harmony']})" if v['channel_c'] == 'harmony' else "")
+              + (f"({c_count})" if c_count else "")
               + (f"  drums={v['drums']}" if v['drums'] else ""))
         print(f"  {LICENCE_REMINDER}")
 

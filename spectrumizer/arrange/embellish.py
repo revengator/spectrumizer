@@ -1,19 +1,24 @@
-"""Chiptune embellishers (only run for --style chiptune).
+"""Chiptune embellishers (composable passes selected by style / flags).
 
-MVP passes:
+Passes:
   * octave_short_lead — octave-double SHORT lead notes (the classic AY brightener;
     held notes stay single-voice so they don't warble).
   * synth_drums       — a backbeat (kick on beats 1&3, snare on 2&4) when the
     source has no drum track, so chiptune output still has percussive drive.
-
-Planned next: chord arpeggios via ORN_MAJOR/ORN_MINOR (the ornament builders are
-already wired in pt3.ornaments) to fake polyphony on a single channel.
+  * chord_arps        — fake polyphony on one channel: play each chord's root and
+    cycle a major/minor ornament (root, +third, +fifth) at 50 Hz, so a single AY
+    channel implies the whole triad (the classic AY/Follin trick).
 """
 
 from __future__ import annotations
 
 from .model import Placed
-from ..pt3 import ORN_OCTAVE, ORN_EMPTY
+from .chords import identify_triad, group_by_onset
+from .quantize import note_rows
+from ..ir import Note
+from ..pt3 import midi_to_pt3_byte, ORN_OCTAVE, ORN_EMPTY, ORN_MAJOR, ORN_MINOR
+
+_ARP_ORN = {'maj': ORN_MAJOR, 'min': ORN_MINOR}
 
 
 def octave_short_lead(lead: list[Placed], short_thresh_rows: int) -> None:
@@ -35,4 +40,38 @@ def synth_drums(total_rows: int, rows_per_beat: int, drum_byte: int,
             placed.append(Placed(row, row + 1, drum_byte, {'sample': kick_sample}))
         else:
             placed.append(Placed(row, row + 1, drum_byte, {'sample': snare_sample}))
+    return placed
+
+
+def chord_arps(notes: list[Note], rows_per_beat: int, total_rows: int,
+               transpose: int = 0, vol_fn=None) -> list[Placed]:
+    """Build a single-channel arpeggio line from the source chords.
+
+    One Placed per onset that carries notes: a recognised major/minor triad
+    becomes its root note + the matching arp ornament (so the one channel cycles
+    root/third/fifth and implies the chord); anything else falls back to the
+    group's lowest note played plain, so the channel is never emptier than a
+    held bass line. `vol_fn` (optional) maps the group's peak velocity to an AY
+    volume for dynamics.
+    """
+    placed: list[Placed] = []
+    for group in group_by_onset(notes):
+        s, e = note_rows(group[0].start, max(n.end for n in group),
+                         rows_per_beat, total_rows)
+        if s >= total_rows:
+            continue
+        pitches = [n.pitch for n in group]
+        triad = identify_triad(pitches)
+        if triad is not None:
+            root_pc, quality = triad
+            root_pitch = min(p for p in pitches if p % 12 == root_pc)
+            note_byte = midi_to_pt3_byte(root_pitch, transpose)
+            ornament = _ARP_ORN[quality]
+        else:
+            note_byte = midi_to_pt3_byte(min(pitches), transpose)
+            ornament = ORN_EMPTY
+        opts: dict = {'ornament': ornament}
+        if vol_fn is not None:
+            opts['vol'] = vol_fn(max(n.velocity for n in group))
+        placed.append(Placed(s, e, note_byte, opts))
     return placed

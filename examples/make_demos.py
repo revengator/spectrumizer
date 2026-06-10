@@ -38,6 +38,12 @@ DEMOS = [
      "Octave-doubled lead + synth drums — the default chiptune flavour.",
      "spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune",
      dict(style="chiptune"), dict()),
+    ("arps", "Chord arpeggios",
+     "Pachelbel's Canon with --arps: channel C plays each chord's root and cycles "
+     "a major/minor ornament at 50 Hz, so a single AY channel implies the whole "
+     "triad — fake polyphony, the classic AY/Follin trick.",
+     "spectrumizer pachelbel-canon.mid --arps",
+     dict(arps=True), dict(), CANON),
     ("buzzer", "Buzzer bass (pure envelope)",
      "Pachelbel's Canon — its ground bass voiced low. Channel B is the AY "
      "hardware envelope itself, oscillating at the note pitch with the tone off "

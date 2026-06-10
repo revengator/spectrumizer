@@ -132,3 +132,47 @@ def test_normal_bass_has_no_envelope():
     assert stats['bass'] == 'normal'
     bass_evs = _bass_events(pt3)
     assert bass_evs and all(ev.env is None and ev.sample == 2 for ev in bass_evs)
+
+
+def _triad_song():
+    # a full C-major triad (C E G) restruck every beat, over a low C bass
+    notes = []
+    for beat in range(8):
+        for pitch in (72, 76, 79):                # C5 E5 G5 -> root C, major
+            notes.append(Note(pitch=pitch, start=beat, dur=1))
+        notes.append(Note(pitch=48, start=beat, dur=1))   # C3 bass
+    return Song(notes=notes, tempo_bpm=120.0, name="CMAJ")
+
+
+def _channel_c_ornaments(pt3):
+    m = parse_module(pt3)
+    return {ev.ornament for ev in m.patterns[0][2]
+            if ev is not None and ev.note is not None}
+
+
+def test_arps_put_chord_ornament_on_channel_c():
+    from spectrumizer.pt3 import ORN_MAJOR
+    pt3, stats = arrange(_triad_song(), style='faithful', arps=True)
+    assert stats['arps'] is True
+    assert stats['voices']['channel_c'] == 'arp'
+    assert stats['voices']['arp'] > 0
+    # channel C carries the major-arp ornament (faking the triad on one channel)
+    assert ORN_MAJOR in _channel_c_ornaments(pt3)
+    # the row invariant must still hold with the extra ornament tokens
+    for (a, b, c) in _pattern_channel_addrs(pt3, stats['patterns']):
+        for addr in (a, b, c):
+            assert decode_row_count(pt3[addr:]) == ROWS_PER_PATTERN
+
+
+def test_arps_off_keeps_plain_harmony():
+    from spectrumizer.pt3 import ORN_EMPTY
+    pt3, stats = arrange(_triad_song(), style='faithful', arps=False)
+    assert stats['voices']['channel_c'] == 'harmony'
+    assert _channel_c_ornaments(pt3) == {ORN_EMPTY}
+
+
+def test_real_drums_outrank_arps_on_channel_c():
+    song = _triad_song()
+    song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
+    _, stats = arrange(song, style='chiptune', arps=True)
+    assert stats['voices']['channel_c'] == 'drums'   # drums win over arps
