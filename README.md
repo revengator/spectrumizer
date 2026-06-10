@@ -82,6 +82,10 @@ Run `spectrumizer --help` for all flags.
 MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→ .pt3
 ```
 
+- **`spectrumizer/inputs/`** — MIDI → IR (via `mido`). Tempo changes are folded
+  into one fixed grid (PT3 has a single global speed): the tempo heard longest
+  becomes the reference and other sections are time-scaled onto it, so
+  wall-clock timing is preserved.
 - **`spectrumizer/pt3/`** — the proven PT3 emitter (note encoding, channel packer,
   samples, ornaments, file writer). The byte format is verified against the real
   player; don't change it blindly.
@@ -207,8 +211,6 @@ pytest -q
   - **Richer percussion** — hi-hats (GM 42/44/46) and synth-drum pattern
     variety beyond the fixed 4/4 backbeat.
   - **Arps v2** — 7th/sus ornaments, configurable arpeggio speed.
-  - **MIDI tempo map** — honour tempo changes (today only the first
-    `set_tempo` counts).
   - **Auto-transpose** — fit the piece's range to the AY instead of tuning by ear.
   - MusicXML (music21) input · PT3 slides/glissando in the audition player ·
     raw-AY register-dump export (`.psg` / `.vtx`).

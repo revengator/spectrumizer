@@ -35,6 +35,46 @@ def test_load_midi_notes_drums_tempo(tmp_path):
     assert abs(first.start) < 1e-6 and abs(first.dur - 1.0) < 1e-3
 
 
+def test_tempo_changes_fold_into_the_dominant_tempo(tmp_path):
+    # 1 beat @120 then 4 beats @60: 60 bpm wins by wall-clock, so the grid is
+    # 60 bpm and the @120 note shrinks to half a reference beat (same seconds).
+    mid = mido.MidiFile(ticks_per_beat=480)
+    tr = mido.MidiTrack(); mid.tracks.append(tr)
+    tr.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(120), time=0))
+    tr.append(mido.Message('note_on', note=60, velocity=100, channel=0, time=0))
+    tr.append(mido.Message('note_off', note=60, velocity=0, channel=0, time=480))
+    tr.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(60), time=0))
+    tr.append(mido.Message('note_on', note=64, velocity=100, channel=0, time=0))
+    tr.append(mido.Message('note_off', note=64, velocity=0, channel=0,
+                           time=4 * 480))
+    p = tmp_path / "t.mid"
+    mid.save(str(p))
+
+    song = load_midi(str(p))
+    assert abs(song.tempo_bpm - 60.0) < 0.5
+    a, b = sorted(song.notes, key=lambda n: n.start)
+    assert abs(a.start - 0.0) < 1e-6 and abs(a.dur - 0.5) < 1e-3
+    assert abs(b.start - 0.5) < 1e-6 and abs(b.dur - 4.0) < 1e-3
+
+
+def test_reemitted_same_tempo_keeps_the_plain_grid(tmp_path, capsys):
+    # The same tempo re-emitted mid-file (common in DAW exports) is not a
+    # tempo change: the plain ticks/beat grid applies and nothing is printed.
+    mid = mido.MidiFile(ticks_per_beat=480)
+    tr = mido.MidiTrack(); mid.tracks.append(tr)
+    tr.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(100), time=0))
+    tr.append(mido.Message('note_on', note=60, velocity=100, channel=0, time=0))
+    tr.append(mido.MetaMessage('set_tempo', tempo=mido.bpm2tempo(100), time=240))
+    tr.append(mido.Message('note_off', note=60, velocity=0, channel=0, time=240))
+    p = tmp_path / "s.mid"
+    mid.save(str(p))
+
+    song = load_midi(str(p))
+    assert abs(song.tempo_bpm - 100.0) < 0.5
+    assert abs(song.notes[0].dur - 1.0) < 1e-3
+    assert "tempo map" not in capsys.readouterr().err
+
+
 def test_restruck_pitch_closes_the_open_note(tmp_path):
     # the same pitch re-struck while still sounding (legato retrigger) must
     # close the first note at the re-strike, not silently drop it
