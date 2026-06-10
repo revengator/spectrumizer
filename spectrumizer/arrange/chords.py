@@ -45,11 +45,14 @@ def identify_triad(pitches: list[int]) -> tuple[int, str] | None:
     return best
 
 
-def group_by_onset(notes: list[Note]) -> list[list[Note]]:
-    """Bucket notes that share a start time (sorted by onset). Exact-match
-    grouping: MIDI sources align chord notes to the same tick, and the arranger
-    already quantises onsets to the row grid downstream."""
-    buckets: dict[float, list[Note]] = {}
+def group_by_onset(notes: list[Note], key=None) -> list[list[Note]]:
+    """Group notes that attack together, in onset order.
+
+    `key` maps an onset (in beats) to its bucket; pass the row quantiser so
+    "together" means "on the same PT3 row" — hand-played chords land slightly
+    staggered and would never share an exact float onset. Default: exact onset.
+    """
+    buckets: dict = {}
     for n in notes:
-        buckets.setdefault(n.start, []).append(n)
+        buckets.setdefault(key(n.start) if key else n.start, []).append(n)
     return [buckets[k] for k in sorted(buckets)]

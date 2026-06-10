@@ -55,8 +55,10 @@ def chord_arps(notes: list[Note], rows_per_beat: int, total_rows: int,
     volume for dynamics.
     """
     placed: list[Placed] = []
-    for group in group_by_onset(notes):
-        s, e = note_rows(group[0].start, max(n.end for n in group),
+    # group by the row each onset quantises to, so humanised (slightly
+    # staggered) chords are still seen as one chord
+    for group in group_by_onset(notes, key=lambda s: round(s * rows_per_beat)):
+        s, e = note_rows(min(n.start for n in group), max(n.end for n in group),
                          rows_per_beat, total_rows)
         if s >= total_rows:
             continue

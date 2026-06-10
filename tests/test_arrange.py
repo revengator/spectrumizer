@@ -178,6 +178,19 @@ def test_real_drums_outrank_arps_on_channel_c():
     assert stats['voices']['channel_c'] == 'drums'   # drums win over arps
 
 
+def test_arps_recognise_humanised_chords():
+    # the triad's notes land a few hundredths of a beat apart (hand-played):
+    # they still quantise to the same row, so the arp must still engage
+    from spectrumizer.pt3 import ORN_MAJOR
+    notes = []
+    for beat in range(8):
+        for i, pitch in enumerate((72, 76, 79)):
+            notes.append(Note(pitch=pitch, start=beat + i * 0.02, dur=1))
+    pt3, _ = arrange(Song(notes=notes, tempo_bpm=120.0, name="HUMAN"),
+                     style='faithful', arps=True)
+    assert ORN_MAJOR in _channel_c_ornaments(pt3)
+
+
 def test_pattern_boundary_reattack_keeps_volume():
     # a loud anchor, then a soft note held across the 64-row pattern boundary:
     # the row-0 re-attack must keep the note's volume, not jump to the default

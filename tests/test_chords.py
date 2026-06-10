@@ -47,3 +47,14 @@ def test_group_by_onset_buckets_and_sorts():
     groups = group_by_onset(notes)
     assert [g[0].start for g in groups] == [0.0, 1.0]
     assert sorted(n.pitch for n in groups[0]) == [60, 64]
+
+
+def test_group_by_onset_row_key_merges_humanised_chords():
+    # a hand-played chord lands slightly staggered; grouping by the row it
+    # quantises to must still see one chord
+    notes = [Note(pitch=60, start=0.00, dur=1), Note(pitch=64, start=0.03, dur=1),
+             Note(pitch=67, start=0.06, dur=1), Note(pitch=72, start=1.00, dur=1)]
+    groups = group_by_onset(notes, key=lambda s: round(s * 4))
+    assert len(groups) == 2
+    assert sorted(n.pitch for n in groups[0]) == [60, 64, 67]
+    assert [n.pitch for n in groups[1]] == [72]
