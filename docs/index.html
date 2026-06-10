@@ -22,72 +22,74 @@
 <h1>spectrumizer — demos</h1>
 <p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). All clips are the bundled
 public-domain examples (<code>ode-to-joy</code>, <code>pachelbel-canon</code>,
-<code>korobeiniki</code>) rendered through spectrumizer's software AY.</p>
+<code>korobeiniki</code>) rendered through spectrumizer's software AY. Each
+<code>.sna</code> is a self-playing 128K snapshot of the same module — load it
+in any Spectrum emulator to hear the real player.</p>
 <div class="demo">
   <h2>Faithful (3-voice reduction)</h2>
   <p>Straight reduction of the source to lead / bass / harmony.</p>
   <audio controls preload="none" src="audio/faithful.mp3"></audio>
-  <p><code>spectrumizer ode-to-joy.mid -o faithful.pt3</code> &middot; <a href="audio/faithful.pt3">download .pt3</a></p>
+  <p><code>spectrumizer ode-to-joy.mid -o faithful.pt3</code> &middot; <a href="audio/faithful.pt3">download .pt3</a> &middot; <a href="audio/faithful.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Chiptune</h2>
   <p>Octave-doubled lead + synth drums — the default chiptune flavour.</p>
   <audio controls preload="none" src="audio/chiptune.mp3"></audio>
-  <p><code>spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune</code> &middot; <a href="audio/chiptune.pt3">download .pt3</a></p>
+  <p><code>spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune</code> &middot; <a href="audio/chiptune.pt3">download .pt3</a> &middot; <a href="audio/chiptune.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Chord arpeggios</h2>
   <p>Pachelbel&#x27;s Canon with --arps: channel C plays each chord&#x27;s root and cycles a major/minor ornament at 50 Hz, so a single AY channel implies the whole triad — fake polyphony, the classic AY/Follin trick.</p>
   <audio controls preload="none" src="audio/arps.mp3"></audio>
-  <p><code>spectrumizer pachelbel-canon.mid --arps</code> &middot; <a href="audio/arps.pt3">download .pt3</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --arps</code> &middot; <a href="audio/arps.pt3">download .pt3</a> &middot; <a href="audio/arps.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Echo</h2>
   <p>Ode to Joy with --echo: channel C repeats the lead half a beat later and quieter — the other classic AY trick.</p>
   <audio controls preload="none" src="audio/echo.mp3"></audio>
-  <p><code>spectrumizer ode-to-joy.mid --echo</code> &middot; <a href="audio/echo.pt3">download .pt3</a></p>
+  <p><code>spectrumizer ode-to-joy.mid --echo</code> &middot; <a href="audio/echo.pt3">download .pt3</a> &middot; <a href="audio/echo.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Real drums + harmony</h2>
   <p>Korobeiniki — the public-domain Russian folk song behind Tetris — with a real GM drum track. Drums win channel C, but the chord voice fills the rows between hits and re-attacks after each one, so the percussion costs almost no harmony.</p>
   <audio controls preload="none" src="audio/drums.mp3"></audio>
-  <p><code>spectrumizer korobeiniki.mid --style chiptune</code> &middot; <a href="audio/drums.pt3">download .pt3</a></p>
+  <p><code>spectrumizer korobeiniki.mid --style chiptune</code> &middot; <a href="audio/drums.pt3">download .pt3</a> &middot; <a href="audio/drums.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Buzzer bass (pure envelope)</h2>
   <p>Pachelbel&#x27;s Canon — its ground bass voiced low. Channel B is the AY hardware envelope itself, oscillating at the note pitch with the tone off — the characteristic deep AY buzzer. Pitch is coarse, but the low ostinato resolves cleanly.</p>
   <audio controls preload="none" src="audio/buzzer.mp3"></audio>
-  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope</code> &middot; <a href="audio/buzzer.pt3">download .pt3</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope</code> &middot; <a href="audio/buzzer.pt3">download .pt3</a> &middot; <a href="audio/buzzer.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Buzzer bass (tone + envelope)</h2>
   <p>The same Canon with the tone kept on for exact pitch while the hardware envelope adds the buzz — pitch-accurate at any register.</p>
   <audio controls preload="none" src="audio/buzzer-tone.mp3"></audio>
-  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone</code> &middot; <a href="audio/buzzer-tone.pt3">download .pt3</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone</code> &middot; <a href="audio/buzzer-tone.pt3">download .pt3</a> &middot; <a href="audio/buzzer-tone.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>No dynamics</h2>
   <p>Flat per-channel volume; compare with the chiptune clip to hear the velocity-driven dynamics.</p>
   <audio controls preload="none" src="audio/chiptune-flat.mp3"></audio>
-  <p><code>spectrumizer ode-to-joy.mid --style chiptune --no-dynamics</code> &middot; <a href="audio/chiptune-flat.pt3">download .pt3</a></p>
+  <p><code>spectrumizer ode-to-joy.mid --style chiptune --no-dynamics</code> &middot; <a href="audio/chiptune-flat.pt3">download .pt3</a> &middot; <a href="audio/chiptune-flat.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Equal-tempered tuning</h2>
   <p>Equal temperament instead of the exact PT3 tone table — slightly off from where the chip actually plays.</p>
   <audio controls preload="none" src="audio/chiptune-equal.mp3"></audio>
-  <p><code>spectrumizer-play chiptune.pt3 --tuning equal</code> &middot; <a href="audio/chiptune-equal.pt3">download .pt3</a></p>
+  <p><code>spectrumizer-play chiptune.pt3 --tuning equal</code> &middot; <a href="audio/chiptune-equal.pt3">download .pt3</a> &middot; <a href="audio/chiptune.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Mono</h2>
   <p>Mono instead of the default ABC stereo (A-left / B-centre / C-right).</p>
   <audio controls preload="none" src="audio/chiptune-mono.mp3"></audio>
-  <p><code>spectrumizer-play chiptune.pt3 --stereo mono</code> &middot; <a href="audio/chiptune-mono.pt3">download .pt3</a></p>
+  <p><code>spectrumizer-play chiptune.pt3 --stereo mono</code> &middot; <a href="audio/chiptune-mono.pt3">download .pt3</a> &middot; <a href="audio/chiptune.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Everything at once</h2>
   <p>Pachelbel&#x27;s Canon with the flags combined: chiptune octave lead on A, tone+envelope buzzer bass on B and chord arpeggios on C — the whole piece an octave down, at flat volume.</p>
   <audio controls preload="none" src="audio/combo.mp3"></audio>
-  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone --arps --transpose -12 --no-dynamics</code> &middot; <a href="audio/combo.pt3">download .pt3</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone --arps --transpose -12 --no-dynamics</code> &middot; <a href="audio/combo.pt3">download .pt3</a> &middot; <a href="audio/combo.sna">.sna for an emulator</a></p>
 </div>
 
 <footer>Regenerate with <code>python examples/make_demos.py</code>.

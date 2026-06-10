@@ -188,6 +188,12 @@ with `pip install -e ".[demos]" && python examples/make_demos.py`.
 | ▶ [Mono](docs/audio/chiptune-mono.mp3) | vs the default ABC stereo |
 | ▶ [Everything at once](docs/audio/combo.mp3) | the flags compose: octave lead + buzzer bass + arps, an octave down |
 
+Every demo also ships as an **executable 128K snapshot** in
+[`docs/audio/`](docs/audio/) (`<demo>.sna`, made with `spectrumizer-pack`) —
+load it in any Spectrum emulator to hear the real Z80 player instead of the
+software AY. Demos that differ only in playback flags (`--tuning`, `--stereo`)
+share `chiptune.sna`: those are audition-player options, not part of the module.
+
 ## Tests
 
 ```bash

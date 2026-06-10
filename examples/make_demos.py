@@ -8,15 +8,22 @@ ground bass), so visitors can hear every mode on the GitHub Pages site
 
     pip install -e ".[demos]"      # or: pip install lameenc
     python examples/make_demos.py
+
+Each distinct module is also packed (spectrumizer-pack, needs sjasmplus on
+PATH) into an executable 128K .sna snapshot, runnable in any emulator; demos
+that differ only in audition-player flags (--tuning / --stereo) share the
+same .pt3, hence the same .sna.
 """
 
 from __future__ import annotations
 
 import html
 import os
+import shutil
 
 from spectrumizer.inputs.midi import load_midi
 from spectrumizer.arrange import arrange
+from spectrumizer.pack import pack
 from spectrumizer.pt3.player import parse_module
 from spectrumizer import audio
 
@@ -118,7 +125,9 @@ _PAGE = """\
 <h1>spectrumizer — demos</h1>
 <p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). All clips are the bundled
 public-domain examples (<code>ode-to-joy</code>, <code>pachelbel-canon</code>,
-<code>korobeiniki</code>) rendered through spectrumizer's software AY.</p>
+<code>korobeiniki</code>) rendered through spectrumizer's software AY. Each
+<code>.sna</code> is a self-playing 128K snapshot of the same module — load it
+in any Spectrum emulator to hear the real player.</p>
 {items}
 <footer>Regenerate with <code>python examples/make_demos.py</code>.
 See the <a href="https://github.com/revengator/spectrumizer">repository</a>.</footer>
@@ -131,9 +140,11 @@ _ITEM = """\
   <h2>{title}</h2>
   <p>{blurb}</p>
   <audio controls preload="none" src="audio/{slug}.mp3"></audio>
-  <p><code>{cmd}</code> &middot; <a href="audio/{slug}.pt3">download .pt3</a></p>
+  <p><code>{cmd}</code> &middot; <a href="audio/{slug}.pt3">download .pt3</a>{sna}</p>
 </div>
 """
+
+_SNA_LINK = ' &middot; <a href="audio/{slug}.sna">.sna for an emulator</a>'
 
 
 def _encode_mp3(path: str, pcm, channels: int, sample_rate: int,
@@ -158,19 +169,32 @@ def main() -> None:
                          "(or pip install lameenc)")
 
     os.makedirs(OUT, exist_ok=True)
+    pack_snapshots = shutil.which("sjasmplus") is not None
+    if not pack_snapshots:
+        print("  sjasmplus not on PATH: skipping the .sna snapshots")
+
     items = []
+    sna_by_module: dict[bytes, str] = {}     # pt3 bytes -> slug that owns the .sna
     for entry in DEMOS:
         slug, title, blurb, cmd, akw, rkw = entry[:6]
         song = load_midi(entry[6] if len(entry) > 6 else SRC)
         pt3, _ = arrange(song, **akw)
-        with open(os.path.join(OUT, slug + ".pt3"), "wb") as f:
+        pt3_path = os.path.join(OUT, slug + ".pt3")
+        with open(pt3_path, "wb") as f:
             f.write(pt3)
+        sna_slug = sna_by_module.get(pt3)    # identical module: share its .sna
+        if sna_slug is None and pack_snapshots:
+            pack(pt3_path, sna=os.path.join(OUT, slug + ".sna"))
+            sna_by_module[pt3] = sna_slug = slug
         module = parse_module(pt3)
         pcm, ch = audio.render_pcm(module, sample_rate=RATE, **rkw)
         kb = _encode_mp3(os.path.join(OUT, slug + ".mp3"), pcm, ch, RATE) / 1024
-        items.append(_ITEM.format(title=html.escape(title), blurb=html.escape(blurb),
-                                  slug=slug, cmd=html.escape(cmd)))
-        print(f"  {slug}.mp3  ({ch}ch, {kb:.0f} KB)")
+        items.append(_ITEM.format(
+            title=html.escape(title), blurb=html.escape(blurb),
+            slug=slug, cmd=html.escape(cmd),
+            sna=_SNA_LINK.format(slug=sna_slug) if sna_slug else ""))
+        sna_note = "" if sna_slug == slug else f"  (.sna = {sna_slug})"
+        print(f"  {slug}.mp3  ({ch}ch, {kb:.0f} KB){sna_note}")
 
     page = _PAGE.format(items="".join(items))
     with open(os.path.join(ROOT, "docs", "index.html"), "w") as f:
