@@ -189,8 +189,23 @@ pytest -q
   envelope generator** (`spectrumizer-play` / `--play`).
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
-- **Planned:** MusicXML (music21) input, PT3 slides/glissando in the audition
-  player, raw-AY/`.vtx` export.
+- **Planned:**
+  - **Echo on a free channel** (`--echo`) — the lead repeated a few rows later,
+    quieter (with arps, the other classic AY trick).
+  - **Drums + harmony multiplexed on channel C** — drum hits last one row, so
+    the harmony can fill the gaps instead of being dropped when a song has drums.
+  - **Sample vibrato/detune** — PT3 samples carry per-tick tone offsets
+    (unused so far): sub-semitone vibrato for the lead, free at the sample level.
+  - **Richer percussion** — hi-hats (GM 42/44/46) and synth-drum pattern
+    variety beyond the fixed 4/4 backbeat.
+  - **Arps v2** — 7th/sus ornaments, configurable arpeggio speed.
+  - **MIDI tempo map** — honour tempo changes (today only the first
+    `set_tempo` counts).
+  - **Pattern deduplication** — store identical patterns once and repeat them
+    in the position list (the writer already supports `order`).
+  - **Auto-transpose** — fit the piece's range to the AY instead of tuning by ear.
+  - MusicXML (music21) input · PT3 slides/glissando in the audition player ·
+    raw-AY register-dump export (`.psg` / `.vtx`).
 
 ## Origin
 
