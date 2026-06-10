@@ -33,3 +33,22 @@ def test_load_midi_notes_drums_tempo(tmp_path):
     # times are in beats; the first melody note starts at beat 0, lasts 1 beat
     first = sorted(song.notes, key=lambda n: n.start)[0]
     assert abs(first.start) < 1e-6 and abs(first.dur - 1.0) < 1e-3
+
+
+def test_restruck_pitch_closes_the_open_note(tmp_path):
+    # the same pitch re-struck while still sounding (legato retrigger) must
+    # close the first note at the re-strike, not silently drop it
+    mid = mido.MidiFile(ticks_per_beat=480)
+    tr = mido.MidiTrack(); mid.tracks.append(tr)
+    tr.append(mido.Message('note_on', note=60, velocity=100, channel=0, time=0))
+    tr.append(mido.Message('note_on', note=60, velocity=80, channel=0, time=480))
+    tr.append(mido.Message('note_off', note=60, velocity=0, channel=0, time=480))
+    p = tmp_path / "r.mid"
+    mid.save(str(p))
+
+    song = load_midi(str(p))
+    notes = sorted(song.notes, key=lambda n: n.start)
+    assert len(notes) == 2
+    assert abs(notes[0].start - 0.0) < 1e-6 and abs(notes[0].dur - 1.0) < 1e-3
+    assert abs(notes[1].start - 1.0) < 1e-6 and abs(notes[1].dur - 1.0) < 1e-3
+    assert notes[0].velocity == 100 and notes[1].velocity == 80

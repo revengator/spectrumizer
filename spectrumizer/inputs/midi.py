@@ -28,6 +28,11 @@ def load_midi(path: str) -> Song:
     # open notes keyed by (channel, pitch) -> (start_beat, velocity)
     open_notes: dict[tuple[int, int], tuple[float, int]] = {}
 
+    def close(chan: int, pitch: int, start: float, vel: int, end: float) -> None:
+        dur = max(end - start, 1e-6)
+        note = Note(pitch=pitch, start=start, dur=dur, velocity=vel, track=chan)
+        (drums if chan == GM_DRUM_CHANNEL else notes).append(note)
+
     abs_ticks = 0
     for msg in mido.merge_tracks(mid.tracks):
         abs_ticks += msg.time
@@ -37,26 +42,21 @@ def load_midi(path: str) -> Song:
             tempos.append(msg.tempo)
             continue
         if msg.type == 'note_on' and msg.velocity > 0:
-            open_notes[(msg.channel, msg.note)] = (beat, msg.velocity)
-            continue
-        if msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
             key = (msg.channel, msg.note)
             started = open_notes.pop(key, None)
-            if started is None:
-                continue
-            start, vel = started
-            dur = max(beat - start, 1e-6)
-            note = Note(pitch=msg.note, start=start, dur=dur, velocity=vel,
-                        track=msg.channel)
-            (drums if msg.channel == GM_DRUM_CHANNEL else notes).append(note)
+            if started is not None:     # same pitch re-struck while sounding:
+                close(msg.channel, msg.note, *started, beat)   # close, don't drop
+            open_notes[key] = (beat, msg.velocity)
+            continue
+        if msg.type == 'note_off' or (msg.type == 'note_on' and msg.velocity == 0):
+            started = open_notes.pop((msg.channel, msg.note), None)
+            if started is not None:
+                close(msg.channel, msg.note, *started, beat)
 
     # Any notes still held at EOF: close them at the last event time.
-    if open_notes:
-        end_beat = abs_ticks / tpb
-        for (chan, pitch), (start, vel) in open_notes.items():
-            dur = max(end_beat - start, 1e-6)
-            note = Note(pitch=pitch, start=start, dur=dur, velocity=vel, track=chan)
-            (drums if chan == GM_DRUM_CHANNEL else notes).append(note)
+    end_beat = abs_ticks / tpb
+    for (chan, pitch), (start, vel) in open_notes.items():
+        close(chan, pitch, start, vel, end_beat)
 
     if len(tempos) > 1 and len(set(tempos)) > 1:
         print("spectrumizer: warning: source has tempo changes; using the first "
