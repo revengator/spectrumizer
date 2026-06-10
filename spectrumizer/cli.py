@@ -92,8 +92,11 @@ def main(argv: list[str] | None = None) -> int:
     if not args.quiet:
         v = stats["voices"]
         print(f"spectrumizer: {args.input} -> {out}")
+        pats = f"patterns={stats['patterns']}"
+        if stats['positions'] != stats['patterns']:    # deduplicated repeats
+            pats += f" (x{stats['positions']} positions)"
         print(f"  style={stats['style']}  speed={stats['speed']}  "
-              f"tempo~{stats['tempo_bpm']}bpm  patterns={stats['patterns']}  "
+              f"tempo~{stats['tempo_bpm']}bpm  {pats}  "
               f"bytes={stats['bytes']}")
         b_label = {'envelope': 'buzzer',
                    'envelope-tone': 'buzzer+tone'}.get(stats['bass'], 'bass')

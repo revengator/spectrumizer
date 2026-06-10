@@ -151,9 +151,22 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     ]
     patterns = pack_patterns(specs, total_rows)
 
-    pt3 = build_pt3(patterns, dict(DEFAULT_SAMPLES), dict(DEFAULT_ORNAMENTS),
+    # Deduplicate identical patterns through the PT3 position list (store each
+    # once, replay by index). Safe on byte equality: every pattern re-emits its
+    # initial volume / sample / ornament / NtSkip state (see pt3.encode), so
+    # identical bytes mean identical playback.
+    unique: list[tuple[bytes, bytes, bytes]] = []
+    index: dict[tuple[bytes, bytes, bytes], int] = {}
+    order = []
+    for pat in patterns:
+        if pat not in index:
+            index[pat] = len(unique)
+            unique.append(pat)
+        order.append(index[pat])
+
+    pt3 = build_pt3(unique, dict(DEFAULT_SAMPLES), dict(DEFAULT_ORNAMENTS),
                     name=name or song.name or "SPECTRUMIZED",
-                    author=author, speed=speed_v, loop_pos=loop_pos)
+                    author=author, speed=speed_v, order=order, loop_pos=loop_pos)
 
     stats = {
         'style': style,
@@ -164,7 +177,8 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         'speed': speed_v,
         'rows_per_beat': rows_per_beat,
         'total_rows': total_rows,
-        'patterns': len(patterns),
+        'patterns': len(unique),
+        'positions': len(order),
         'tempo_bpm': round(song.tempo_bpm, 1),
         'voices': {'lead': len(lead), 'bass': len(bass_line),
                    'channel_c': c_kind,

@@ -104,6 +104,8 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
   - Channel allocation: **A = lead, B = bass, C =** real drums if present, else
     chord arps (`--arps`), else echo (`--echo`), else synth drums (chiptune),
     else harmony (faithful).
+  - pattern dedup — identical 64-row patterns are stored once and replayed
+    through the PT3 position list (repeats cost 1 byte, not a pattern).
 - **`spectrumizer/ir.py`** — the source-agnostic note model both inputs target.
 
 ### PT3 invariants baked in (from the player source)
@@ -205,8 +207,6 @@ pytest -q
   - **Arps v2** — 7th/sus ornaments, configurable arpeggio speed.
   - **MIDI tempo map** — honour tempo changes (today only the first
     `set_tempo` counts).
-  - **Pattern deduplication** — store identical patterns once and repeat them
-    in the position list (the writer already supports `order`).
   - **Auto-transpose** — fit the piece's range to the AY instead of tuning by ear.
   - MusicXML (music21) input · PT3 slides/glissando in the audition player ·
     raw-AY register-dump export (`.psg` / `.vtx`).

@@ -178,6 +178,35 @@ def test_real_drums_outrank_arps_on_channel_c():
     assert stats['voices']['channel_c'] == 'drums'   # drums win over arps
 
 
+def test_identical_patterns_are_deduplicated():
+    # 32 beats of the same one-beat figure = 128 rows = two byte-identical
+    # 64-row patterns: stored once, played twice through the position list
+    notes = []
+    for beat in range(32):
+        notes.append(Note(pitch=72, start=beat, dur=0.5))
+        notes.append(Note(pitch=48, start=beat, dur=1))
+    pt3, stats = arrange(Song(notes=notes, tempo_bpm=120.0, name="LOOP"),
+                         style='faithful')
+    assert stats['positions'] == 2 and stats['patterns'] == 1
+    m = parse_module(pt3)
+    assert m.order == [0, 0]
+    assert len(m.patterns) == 1
+    # ...and total playback length is still both positions
+    assert stats['total_rows'] == 2 * ROWS_PER_PATTERN
+
+
+def test_different_patterns_are_not_deduplicated():
+    # the same figure but with a changed second half: two distinct patterns
+    notes = []
+    for beat in range(32):
+        notes.append(Note(pitch=(72 if beat < 16 else 74), start=beat, dur=0.5))
+        notes.append(Note(pitch=48, start=beat, dur=1))
+    pt3, stats = arrange(Song(notes=notes, tempo_bpm=120.0, name="AB"),
+                         style='faithful')
+    assert stats['positions'] == 2 and stats['patterns'] == 2
+    assert parse_module(pt3).order == [0, 1]
+
+
 def test_echo_repeats_the_lead_delayed_and_quieter():
     pt3, stats = arrange(_chord_song(), style='faithful', echo=True)
     assert stats['echo'] is True
