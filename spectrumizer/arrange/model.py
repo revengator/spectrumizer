@@ -47,12 +47,14 @@ def pack_patterns(specs: list[tuple], total_rows: int,
 
     specs: 3 tuples (cells, default_sample, default_volume, default_ornament),
     one per AY channel, each `cells` of length total_rows. A held note that
-    crosses a pattern boundary is re-attacked at row 0 (pitch continuity);
+    crosses a pattern boundary is re-attacked at row 0 with its full cell
+    (note AND opts — the encoder resets volume/ornament/sample state per
+    pattern, so a bare re-attack would snap back to the channel defaults);
     genuine silence at row 0 is anchored with OFF so the packer doesn't drop it.
     """
     assert total_rows % rows_per_pattern == 0
     n_pat = total_rows // rows_per_pattern
-    last_note: list = [None, None, None]
+    last_cell: list = [None, None, None]
     patterns: list[tuple[bytes, bytes, bytes]] = []
 
     for pi in range(n_pat):
@@ -60,14 +62,11 @@ def pack_patterns(specs: list[tuple], total_rows: int,
         for ci, (cells, sample, vol, orn) in enumerate(specs):
             sl = list(cells[pi * rows_per_pattern:(pi + 1) * rows_per_pattern])
             if sl and sl[0] == REST:
-                sl[0] = last_note[ci] if last_note[ci] is not None else OFF
+                sl[0] = last_cell[ci] if last_cell[ci] is not None else OFF
             for cell in sl:
                 if cell == REST:
                     continue
-                if cell == OFF:
-                    last_note[ci] = None
-                else:
-                    last_note[ci] = cell[0] if isinstance(cell, tuple) else cell
+                last_cell[ci] = None if cell == OFF else cell
             chans.append(encode_channel(sl, default_sample=sample,
                                         default_volume=vol, ornament=orn))
         patterns.append((chans[0], chans[1], chans[2]))

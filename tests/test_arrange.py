@@ -176,3 +176,31 @@ def test_real_drums_outrank_arps_on_channel_c():
     song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
     _, stats = arrange(song, style='chiptune', arps=True)
     assert stats['voices']['channel_c'] == 'drums'   # drums win over arps
+
+
+def test_pattern_boundary_reattack_keeps_volume():
+    # a loud anchor, then a soft note held across the 64-row pattern boundary:
+    # the row-0 re-attack must keep the note's volume, not jump to the default
+    notes = [Note(pitch=72, start=0, dur=1, velocity=120),
+             Note(pitch=76, start=1, dur=30, velocity=30)]
+    pt3, stats = arrange(Song(notes=notes, tempo_bpm=120.0, name="HOLD"),
+                         style='faithful', dynamics=True)
+    assert stats['patterns'] >= 2
+    m = parse_module(pt3)
+    a0 = [ev for ev in m.patterns[0][0] if ev is not None and ev.note is not None]
+    held_attack = a0[-1]                    # the soft note's original attack
+    reattack = m.patterns[1][0][0]          # its re-attack at the next pattern
+    assert reattack is not None and reattack.note == held_attack.note
+    assert reattack.vol == held_attack.vol
+
+
+def test_pattern_boundary_reattack_keeps_arp_ornament():
+    # a triad held across the boundary must keep its arp ornament on channel C
+    from spectrumizer.pt3 import ORN_MAJOR
+    notes = [Note(pitch=p, start=0, dur=20) for p in (72, 76, 79)]
+    notes.append(Note(pitch=48, start=0, dur=20))
+    pt3, stats = arrange(Song(notes=notes, tempo_bpm=120.0, name="HOLDARP"),
+                         style='faithful', arps=True)
+    assert stats['patterns'] >= 2
+    reattack = parse_module(pt3).patterns[1][2][0]
+    assert reattack is not None and reattack.ornament == ORN_MAJOR
