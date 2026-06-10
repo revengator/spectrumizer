@@ -75,6 +75,9 @@ def test_pack_emits_tap_and_sna(tmp_path):
     blocks = _blocks(tap.read_bytes())
     assert len(blocks) == 4 and blocks[2][1] == 3        # valid CODE block
     assert int.from_bytes(blocks[2][14:16], 'little') == 0x8000
-    # the loaded image begins with the loader: di / ld sp,nn / ld hl,nn
+    # the loaded image begins with the loader: di / ld sp,nn / ld bc,$7FFD
     image = blocks[3][1:-1]
-    assert image[0] == 0xF3 and image[1] == 0x31 and image[4] == 0x21
+    assert image[0] == 0xF3 and image[1] == 0x31 and image[4] == 0x01
+    # ... and carries the title screen's texts
+    for text in (b"spectrumizer", b"github.com/revengator"):
+        assert text in image

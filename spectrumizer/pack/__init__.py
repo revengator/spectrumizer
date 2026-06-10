@@ -36,7 +36,12 @@ _CLEAR, _LOAD, _CODE, _RANDOMIZE, _USR, _VAL = 0xFD, 0xEF, 0xAF, 0xF9, 0xC0, 0xB
 
 def _wrapper_asm(player_asm: str, pt3_path: str, *, sna: str | None,
                  raw_bin: str) -> str:
-    """The sjasmplus source: IM1 loader + Bulba player + the module."""
+    """The sjasmplus source: title screen + IM1 loader + Bulba player + module.
+
+    The title screen prints with the ROM font (we page in ROM 1, the 48K
+    BASIC ROM, so it sits at $3D00 on 128K machines too; the OUT is a no-op
+    on a real 48K). Song title and author are read straight from the .pt3
+    header (offsets $1E and $42), so any module shows its own credits."""
     save_sna = f'    SAVESNA "{sna}", main\n' if sna else ""
     return f"""\
     DEVICE ZXSPECTRUM128
@@ -44,13 +49,230 @@ def _wrapper_asm(player_asm: str, pt3_path: str, *, sna: str | None,
 main:
     di
     ld sp, stacktop
+    ld bc, $7ffd            ; page ROM 1 (48K ROM: the font), bank 0, screen 5
+    ld a, $10               ; harmless on a 48K machine (port unmapped)
+    out (c), a
+    call screen             ; draw the title screen
     ld hl, module
     call START+3            ; init player with module address in HL
     ei
 .loop:
     halt                    ; wait for the 50 Hz interrupt (IM1, ROM handler)
     call START+5            ; play one frame
+    call anim               ; rainbow-cycle the logo attributes
     jr .loop
+
+; ------------------------------------------------------------- title screen
+screen:
+    xor a
+    out ($fe), a            ; black border
+    ld hl, $4000            ; clear pixels + attrs to 0 (ink 0 on paper 0):
+    ld de, $4001            ; text only shows once its row attr is set below
+    ld bc, $1aff
+    ld (hl), a
+    ldir
+    ld b, 1
+    ld c, 10
+    ld hl, logo_txt
+    call prtext
+    ld b, 3
+    ld c, 5
+    ld hl, sub_txt
+    call prtext
+    ld hl, module+$1e       ; song title, straight from the PT3 header
+    ld d, 32
+    ld b, 11
+    call center
+    ld hl, module+$42       ; author field: skip the row when blank
+    ld b, 32
+.chk:
+    ld a, (hl)
+    cp 32
+    jr nz, .author
+    inc hl
+    djnz .chk
+    jr .credits
+.author:
+    ld hl, by_txt           ; compose "by <author>" and centre it
+    ld de, buf
+    ld bc, 3
+    ldir
+    ld hl, module+$42
+    ld bc, 32
+    ldir
+    ld hl, buf
+    ld d, 35
+    ld b, 13
+    call center
+.credits:
+    ld b, 22
+    ld c, 5
+    ld hl, url_txt
+    call prtext
+    ld b, 1                 ; reveal each text row with its colour
+    ld e, $47               ; (paper stays black everywhere)
+    call filla
+    ld b, 3
+    ld e, $07
+    call filla
+    ld b, 11
+    ld e, $47
+    call filla
+    ld b, 13
+    ld e, $07
+    call filla
+    ld b, 22
+    ld e, $06
+    call filla
+    ret
+
+center:                     ; centre HL (field of D bytes, row B), spaces cut
+    push hl
+    ld e, d
+    ld d, 0
+    add hl, de
+.scan:
+    dec hl
+    ld a, (hl)
+    cp 32
+    jr nz, .found
+    dec e
+    jr nz, .scan
+    pop hl
+    ret                     ; all spaces: nothing to print
+.found:
+    pop hl
+    ld a, e
+    cp 33
+    jr c, .fits
+    ld e, 32                ; clamp to one screen row
+.fits:
+    ld a, 32
+    sub e
+    srl a
+    ld c, a                 ; col = (32 - len) / 2
+    ld a, e                 ; fall through with A = count
+prtextn:                    ; print A chars from HL at row B, col C
+    push af
+    ld a, (hl)
+    inc hl
+    call prchar
+    inc c
+    pop af
+    dec a
+    jr nz, prtextn
+    ret
+
+prtext:                     ; print asciiz HL at row B, col C
+    ld a, (hl)
+    or a
+    ret z
+    inc hl
+    call prchar
+    inc c
+    jr prtext
+
+prchar:                     ; glyph A at (row B, col C); preserves BC, HL
+    push bc
+    push hl
+    cp 32
+    jr c, .blank
+    cp 128
+    jr c, .ok
+.blank:
+    ld a, 32                ; outside the ROM font: print a space
+.ok:
+    ld l, a
+    ld h, 0
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    ld de, $3c00            ; ROM font: glyph = $3C00 + char*8
+    add hl, de
+    ld a, b                 ; screen addr: $40|(row&$18) : (row&7)<<5 | col
+    and $18
+    or $40
+    ld d, a
+    ld a, b
+    and 7
+    rrca
+    rrca
+    rrca
+    or c
+    ld e, a
+    ld b, 8
+.row:
+    ld a, (hl)
+    ld (de), a
+    inc hl
+    inc d
+    djnz .row
+    pop hl
+    pop bc
+    ret
+
+filla:                      ; fill row B's 32 attribute cells with E
+    ld l, b
+    ld h, 0
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    add hl, hl
+    add hl, hl              ; HL = row*32; add $5800 via H so E survives
+    ld a, h
+    add a, $58
+    ld h, a
+    ld b, 32
+.fa:
+    ld (hl), e
+    inc hl
+    djnz .fa
+    ret
+
+anim:                       ; rainbow-wave the logo attrs every 4 frames
+    ld hl, frame
+    inc (hl)
+    ld a, (hl)
+    and 3
+    ret nz
+    inc hl
+    inc (hl)                ; phase advances the wave one step
+    ld a, (hl)
+    ld de, $5800+32+10      ; row 1, cols 10..21: "spectrumizer"
+    ld b, 12
+    ld c, a
+.an:
+    ld a, c
+    and 15
+    ld hl, rainbow
+    add a, l
+    ld l, a
+    jr nc, .nc
+    inc h
+.nc:
+    ld a, (hl)
+    ld (de), a
+    inc de
+    inc c
+    djnz .an
+    ret
+
+logo_txt:
+    db "spectrumizer", 0
+sub_txt:
+    db "MIDI -> ZX Spectrum AY", 0
+by_txt:
+    db "by "
+url_txt:
+    db "github.com/revengator", 0
+rainbow:                    ; bright ink on black, one wave period
+    db $42,$42,$46,$46,$44,$44,$45,$45,$47,$47,$45,$45,$44,$44,$46,$46
+frame:
+    db 0
+phase:
+    db 0
+buf:
+    ds 35
 
     include "{player_asm}"
 module:

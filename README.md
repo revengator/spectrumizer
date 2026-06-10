@@ -164,6 +164,10 @@ snapshot and just plays; the `.tap` must be loaded in **128K / 128-BASIC** mode
 (the 48K loader has no AY). Needs **sjasmplus** on PATH to assemble the player.
 The bundled player is Bulba's, under its own terms — see [`LICENSING.md`](LICENSING.md).
 
+While it plays, the program shows a small title screen — a colour-cycling
+*spectrumizer* logo plus the module's **title and author**, read straight from
+the PT3 header, with the ROM font on black.
+
 ## Demos
 
 Hear every mode in your browser on the **[demo page](https://revengator.github.io/spectrumizer/)**
