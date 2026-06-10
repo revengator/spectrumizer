@@ -65,10 +65,22 @@ def test_frame_count_matches_speed():
 
 
 def test_noise_period_is_derived_not_fixed():
-    # spectrumizer never emits PD_NOIS and its samples carry byte0 == 0, so the
-    # real per-frame noise register is 0 throughout (hardware period 1).
+    # spectrumizer never emits PD_NOIS and its MELODIC samples carry byte0 == 0,
+    # so the per-frame noise register stays 0 here (hardware period 1). The
+    # drum samples DO drive it — see test_drum_samples_drive_the_noise_period.
     module = parse_module(_make_module())
     assert all(noise == 0 for _channels, noise, _env in iter_frames(module))
+
+
+def test_mid_pattern_sample_change_roundtrips():
+    # a channel that switches samples mid-pattern (the drums do: kick<->snare)
+    # must decode back to the same slots — the 0xD0+slot token is NOT 0xD0|slot
+    from spectrumizer.pt3.player import decode_channel
+    c = encode_channel(_cells({0: ('C-4', {'sample': 5}),
+                               8: ('C-4', {'sample': 4})}),
+                       default_sample=4, default_volume=13)
+    rows = decode_channel(c, 0)
+    assert rows[0].sample == 5 and rows[8].sample == 4
 
 
 def test_render_is_audible():

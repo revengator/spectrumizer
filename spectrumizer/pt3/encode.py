@@ -123,7 +123,9 @@ def encode_channel(rows: list, default_sample: int = 1,
             out.append(0x40 | (cur_ornament & 0x0F))
         if 'sample' in opts and opts['sample'] != cur_sample:
             cur_sample = opts['sample']
-            out.append(0xD0 | (cur_sample & 0x1F))
+            # token = 0xD0 + slot: identical bytes to OR for slots 0..15, but
+            # OR would corrupt slots 16..31 (0xD0 already has bit 4 set).
+            out.append(0xD0 + (cur_sample & 0x1F))
         if 'env' in opts:
             env = opts['env']
             if env == 'off' or env is None:

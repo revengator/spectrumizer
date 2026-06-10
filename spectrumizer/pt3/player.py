@@ -143,8 +143,8 @@ def decode_channel(data: bytes, addr: int) -> list:
             cur_orn = b & 0x0F
             cur_sample = data[i] // 2; i += 1
             continue
-        if 0xD0 <= b <= 0xEF:               # sample change
-            cur_sample = b & 0x1F
+        if 0xD0 <= b <= 0xEF:               # sample change (token = 0xD0 + slot;
+            cur_sample = b - 0xD0           # NOT b & 0x1F — 0xD0 has bit4 set)
             continue
         if 0x40 <= b <= 0x4F:               # ornament change
             cur_orn = b & 0x0F
