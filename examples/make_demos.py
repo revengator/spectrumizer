@@ -44,6 +44,11 @@ DEMOS = [
      "triad — fake polyphony, the classic AY/Follin trick.",
      "spectrumizer pachelbel-canon.mid --arps",
      dict(arps=True), dict(), CANON),
+    ("echo", "Echo",
+     "Ode to Joy with --echo: channel C repeats the lead half a beat later and "
+     "quieter — the other classic AY trick.",
+     "spectrumizer ode-to-joy.mid --echo",
+     dict(echo=True), dict()),
     ("buzzer", "Buzzer bass (pure envelope)",
      "Pachelbel's Canon — its ground bass voiced low. Channel B is the AY "
      "hardware envelope itself, oscillating at the note pitch with the tone off "

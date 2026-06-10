@@ -8,6 +8,8 @@ Passes:
   * chord_arps        — fake polyphony on one channel: play each chord's root and
     cycle a major/minor ornament (root, +third, +fifth) at 50 Hz, so a single AY
     channel implies the whole triad (the classic AY/Follin trick).
+  * echo_lead         — a delayed, quieter copy of the lead on a free channel
+    (the other classic AY trick).
 """
 
 from __future__ import annotations
@@ -77,3 +79,21 @@ def chord_arps(notes: list[Note], rows_per_beat: int, total_rows: int,
             opts['vol'] = vol_fn(max(n.velocity for n in group))
         placed.append(Placed(s, e, note_byte, opts))
     return placed
+
+
+def echo_lead(lead: list[Placed], delay_rows: int, total_rows: int,
+              level: int = 8) -> list[Placed]:
+    """A delayed, quieter copy of the lead — the classic AY echo on a free
+    channel. Each lead note repeats `delay_rows` later with its volume scaled
+    by `level`/15 (a note with no explicit volume counts as 15). Everything
+    else the note carries (ornaments — e.g. the chiptune octave) echoes with
+    it, so run this AFTER the lead embellishments."""
+    out: list[Placed] = []
+    for p in lead:
+        s = p.start + delay_rows
+        if s >= total_rows:
+            continue
+        opts = dict(p.opts)
+        opts['vol'] = max(1, round(opts.get('vol', 15) * level / 15))
+        out.append(Placed(s, min(p.end + delay_rows, total_rows), p.note, opts))
+    return out

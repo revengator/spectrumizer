@@ -67,6 +67,9 @@ spectrumizer song.mid --bass envelope-tone   # tone keeps the pitch, envelope ad
 # ornament at 50 Hz — one channel implies the whole triad (the classic AY trick)
 spectrumizer song.mid --arps
 
+# echo: channel C repeats the lead half a beat later, quieter (the other classic)
+spectrumizer song.mid --echo
+
 # generate and immediately hear it (renders through a software AY, then plays)
 spectrumizer song.mid -o song.pt3 --play
 ```
@@ -86,11 +89,12 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
   - `quantize` — map time to PT3's row grid (derive `speed` from tempo).
   - `reduce` — peel the source polyphony into ≤3 monophonic lines (lead / bass /
     harmony) via a greedy high/low "skyline".
-  - `embellish` — extra voices: octave leads + synth drums (chiptune style) and
+  - `embellish` — extra voices: octave leads + synth drums (chiptune style),
     **chord arpeggios** (`--arps`) — each source chord becomes its root note plus
     a major/minor ornament cycling 0/+4/+7 (or 0/+3/+7) semitones at 50 Hz, so
     one AY channel implies the full triad (`arrange/chords.py` recognises the
-    triads).
+    triads) — and **echo** (`--echo`) — the lead repeated half a beat later,
+    quieter, on channel C.
   - dynamics — MIDI velocity → per-note AY volume, normalised so the piece's
     loudest note hits each channel's ceiling (on by default; `--no-dynamics`).
   - buzzer bass — `--bass envelope` routes channel B through the AY **hardware
@@ -98,7 +102,8 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
     low). `--bass envelope-tone` keeps the tone for exact pitch and uses the
     envelope only for the buzz.
   - Channel allocation: **A = lead, B = bass, C =** real drums if present, else
-    chord arps (`--arps`), else synth drums (chiptune), else harmony (faithful).
+    chord arps (`--arps`), else echo (`--echo`), else synth drums (chiptune),
+    else harmony (faithful).
 - **`spectrumizer/ir.py`** — the source-agnostic note model both inputs target.
 
 ### PT3 invariants baked in (from the player source)
@@ -165,6 +170,7 @@ where envelope bass shines). Regenerate with `pip install -e ".[demos]" && pytho
 | ▶ [Faithful](docs/audio/faithful.mp3) | 3-voice reduction |
 | ▶ [Chiptune](docs/audio/chiptune.mp3) | octave lead + synth drums |
 | ▶ [Chord arpeggios](docs/audio/arps.mp3) | triads faked on one channel via 50 Hz ornaments (`--arps`) |
+| ▶ [Echo](docs/audio/echo.mp3) | the lead repeated half a beat later, quieter (`--echo`) |
 | ▶ [Buzzer (pure)](docs/audio/buzzer.mp3) | bass = the AY hardware envelope, tone off (`--bass envelope`) |
 | ▶ [Buzzer (tone+env)](docs/audio/buzzer-tone.mp3) | envelope buzz, tone keeps the pitch (`--bass envelope-tone`) |
 | ▶ [No dynamics](docs/audio/chiptune-flat.mp3) | flat volume — vs the velocity dynamics |
@@ -182,16 +188,14 @@ pytest -q
 ## Status
 
 - **Generate:** MIDI → PT3, faithful + chiptune, velocity-driven dynamics,
-  **chord arpeggios** (`--arps`), and **buzzer bass** through the AY hardware
-  envelope (`--bass envelope` / `envelope-tone`).
+  **chord arpeggios** (`--arps`), **echo** (`--echo`), and **buzzer bass**
+  through the AY hardware envelope (`--bass envelope` / `envelope-tone`).
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
   table, real per-frame noise period, ABC panning, and the AY **hardware
   envelope generator** (`spectrumizer-play` / `--play`).
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
 - **Planned:**
-  - **Echo on a free channel** (`--echo`) — the lead repeated a few rows later,
-    quieter (with arps, the other classic AY trick).
   - **Drums + harmony multiplexed on channel C** — drum hits last one row, so
     the harmony can fill the gaps instead of being dropped when a song has drums.
   - **Sample vibrato/detune** — PT3 samples carry per-tick tone offsets

@@ -22,7 +22,7 @@ from ..pt3 import (
 from .model import Placed, rasterize, pack_patterns, ROWS_PER_PATTERN
 from .quantize import plan_grid, note_rows
 from .reduce import assign_voices
-from .embellish import octave_short_lead, synth_drums, chord_arps
+from .embellish import octave_short_lead, synth_drums, chord_arps, echo_lead
 
 # GM percussion keys we treat as a kick (everything else on ch10 -> snare).
 GM_KICK_KEYS = {35, 36}
@@ -78,7 +78,8 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
             speed: int | None = None, transpose: int = 0,
             name: str | None = None, author: str = 'SPECTRUMIZER',
             loop_pos: int = 0, dynamics: bool = True,
-            bass: str = 'normal', arps: bool = False) -> tuple[bytes, dict]:
+            bass: str = 'normal', arps: bool = False,
+            echo: bool = False) -> tuple[bytes, dict]:
     """Arrange `song` and return (pt3_bytes, stats).
 
     `dynamics`: map MIDI velocity to per-note AY volume (on by default); the
@@ -92,12 +93,16 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     root + a major/minor ornament cycling at 50 Hz, faking the full triad on one
     channel. Real drums in the source still take channel C; otherwise arps
     replace the harmony / synth-drums voice there.
+    `echo`: route channel C to a delayed, quieter copy of the lead (the classic
+    AY echo: half a beat later at ~8/15 volume, same timbre). Outranked by real
+    drums and by `arps`.
     """
     speed_v, total_rows = plan_grid(song, rows_per_beat, speed)
 
-    # Channel C: real drums win; then arps; then synth-drums (chiptune) / harmony.
+    # Channel C: drums win; then arps; then echo; then synth-drums / harmony.
     arps = arps and not song.has_drums
-    use_drum_channel = song.has_drums or style == 'chiptune' or arps
+    echo = echo and not song.has_drums and not arps
+    use_drum_channel = song.has_drums or style == 'chiptune' or arps or echo
     n_pitched = 2 if use_drum_channel else 3
     lead, bass_line, harmony = assign_voices(song.notes, n_pitched)
 
@@ -123,6 +128,9 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         vol_fn = (lambda v: vol_from_velocity(v, 10, vmax)) if vmax > 0 else None
         c_p = chord_arps(song.notes, rows_per_beat, total_rows, transpose, vol_fn)
         c_sample, c_vol, c_kind = S_HARMONY, 10, 'arp'
+    elif echo:
+        c_p = []                        # built below, after the lead embellishment
+        c_sample, c_vol, c_kind = S_LEAD, 8, 'echo'
     elif style == 'chiptune':
         c_p = synth_drums(total_rows, rows_per_beat, DRUM_NOTE_BYTE, S_SNARE, S_KICK)
         c_sample, c_vol, c_kind = S_SNARE, 13, 'synth-drums'
@@ -132,6 +140,9 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
 
     if style == 'chiptune':
         octave_short_lead(lead_p, short_thresh_rows=rows_per_beat)
+    if c_kind == 'echo':                # after octave_short_lead, so the echo
+        c_p = echo_lead(lead_p,         # carries the lead's ornaments too
+                        max(1, rows_per_beat // 2), total_rows)
 
     specs = [
         (rasterize(lead_p, total_rows), S_LEAD, 15, ORN_EMPTY),
@@ -149,6 +160,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         'dynamics': dynamics,
         'bass': bass,
         'arps': arps,
+        'echo': echo,
         'speed': speed_v,
         'rows_per_beat': rows_per_beat,
         'total_rows': total_rows,
@@ -158,6 +170,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
                    'channel_c': c_kind,
                    'harmony': len(harmony) if c_kind == 'harmony' else 0,
                    'arp': len(c_p) if c_kind == 'arp' else 0,
+                   'echo': len(c_p) if c_kind == 'echo' else 0,
                    'drums': len(song.drums)},
         'bytes': len(pt3),
     }

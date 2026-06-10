@@ -178,6 +178,51 @@ def test_real_drums_outrank_arps_on_channel_c():
     assert stats['voices']['channel_c'] == 'drums'   # drums win over arps
 
 
+def test_echo_repeats_the_lead_delayed_and_quieter():
+    pt3, stats = arrange(_chord_song(), style='faithful', echo=True)
+    assert stats['echo'] is True
+    assert stats['voices']['channel_c'] == 'echo'
+    assert stats['voices']['echo'] > 0
+    m = parse_module(pt3)
+    lead = {r: ev for r, ev in enumerate(m.patterns[0][0])
+            if ev is not None and ev.note is not None}
+    echoes = {r: ev for r, ev in enumerate(m.patterns[0][2])
+              if ev is not None and ev.note is not None}
+    # every echo onset is a lead onset 2 rows (half a beat at rpb=4) earlier...
+    assert echoes
+    assert all(r - 2 in lead and ev.note == lead[r - 2].note
+               for r, ev in echoes.items())
+    # ...and quieter
+    assert all(ev.vol < lead[r - 2].vol for r, ev in echoes.items())
+    # the row invariant holds with the silent lead-in on channel C
+    for (a, b, c) in _pattern_channel_addrs(pt3, stats['patterns']):
+        for addr in (a, b, c):
+            assert decode_row_count(pt3[addr:]) == ROWS_PER_PATTERN
+
+
+def test_echo_carries_the_chiptune_octave_ornament():
+    # short lead notes get the octave ornament in chiptune style; the echo is
+    # built after that pass, so it must carry the ornament too
+    from spectrumizer.pt3 import ORN_OCTAVE
+    notes = []
+    for beat in range(8):
+        notes.append(Note(pitch=72, start=beat, dur=0.5))   # short -> octave orn
+        notes.append(Note(pitch=48, start=beat, dur=1))     # bass
+    pt3, stats = arrange(Song(notes=notes, tempo_bpm=120.0, name="ECHO"),
+                         style='chiptune', echo=True)
+    assert stats['voices']['channel_c'] == 'echo'
+    assert ORN_OCTAVE in _channel_c_ornaments(pt3)
+
+
+def test_channel_c_priority_drums_then_arps_then_echo():
+    song = _triad_song()
+    _, stats = arrange(song, style='faithful', arps=True, echo=True)
+    assert stats['voices']['channel_c'] == 'arp'      # arps outrank echo
+    song.drums = [Note(pitch=36, start=b, dur=0.25) for b in range(8)]
+    _, stats = arrange(song, style='faithful', arps=True, echo=True)
+    assert stats['voices']['channel_c'] == 'drums'    # drums outrank both
+
+
 def test_arps_recognise_humanised_chords():
     # the triad's notes land a few hundredths of a beat apart (hand-played):
     # they still quantise to the same row, so the arp must still engage
