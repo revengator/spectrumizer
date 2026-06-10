@@ -83,6 +83,34 @@ def test_mid_pattern_sample_change_roundtrips():
     assert rows[0].sample == 5 and rows[8].sample == 4
 
 
+def test_drum_samples_encode_their_noise_period():
+    from spectrumizer.pt3.player import parse_sample
+    from spectrumizer.pt3 import samples as smp
+    snare = parse_sample(smp.build_snare(), 0)
+    # every snare tick is on the noise path at the snare's period
+    assert all(t[3] and t[4] == smp.SNARE_NOISE for t in snare.ticks)
+    kick = parse_sample(smp.build_kick(), 0)
+    assert kick.ticks[0][3] and kick.ticks[0][4] == smp.KICK_NOISE
+    assert not kick.ticks[2][3]        # tone-only ticks keep byte0 = 0 (env slide!)
+
+
+def test_drum_samples_drive_the_noise_period():
+    from spectrumizer.pt3 import S_SNARE, S_KICK
+    from spectrumizer.pt3.samples import SNARE_NOISE, KICK_NOISE
+    a = encode_channel(_cells({0: 'C-4'}), default_sample=1, default_volume=15)
+    b = encode_channel(_cells({0: 'C-3'}), default_sample=2, default_volume=14)
+    c = encode_channel(_cells({0: ('C-4', {'sample': S_KICK}),
+                               8: ('C-4', {'sample': S_SNARE})}),
+                       default_sample=S_SNARE, default_volume=13)
+    pt3 = build_pt3([(a, b, c)], dict(DEFAULT_SAMPLES), dict(DEFAULT_ORNAMENTS),
+                    name="DRUMS", speed=6)
+    frames = list(iter_frames(parse_module(pt3)))
+    # 6 frames per row: the kick thuds dark from row 0, the snare from row 8
+    # (channel C is processed last, so the drum wins R6 over the bass attack)
+    assert frames[0][1] == KICK_NOISE
+    assert frames[8 * 6][1] == SNARE_NOISE
+
+
 def test_render_is_audible():
     module = parse_module(_make_module())
     pcm, ch = audio.render_pcm(module, sample_rate=8000)

@@ -1,7 +1,7 @@
 """PT3 instrument samples.
 
 A PT3 "sample" is a per-tick amplitude/mixer envelope. Each tick is 4 bytes:
-  byte0 = 0x00            (no amp-slide / no envelope / no noise-slide)
+  byte0 = noise period<<1 on noise ticks (AddToNs -> R6); 0 elsewhere
   byte1 = mix bits | amp  (bit7=1 tone OFF... see below)  amp = 0..15
   byte2 = tone offset lo  (0x00)
   byte3 = tone offset hi  (0x00)
@@ -17,18 +17,29 @@ library. The byte1 mix semantics are confirmed against the real player.
 
 from __future__ import annotations
 
+# AY noise periods (R6, 0..31) for the drums: lower = brighter/hissier.
+SNARE_NOISE = 6      # bright hiss with some body
+KICK_NOISE = 20      # dark, thuddy
 
-def _sample_raw(b1_ticks: list[int], loop: int | None = None) -> bytes:
-    n = len(b1_ticks)
+
+def _sample_raw(ticks: list, loop: int | None = None) -> bytes:
+    """ticks: byte1 mix|amp values, or (byte1, noise_period) tuples.
+
+    The noise period is packed into byte0 (the player reads AddToNs =
+    byte0 >> 1 into R6) and must only be set on ticks whose mixer enables
+    the noise — with the noise off (byte1 bit7 = 1) the real player reads
+    byte0 as an envelope slide instead."""
+    n = len(ticks)
     loop = n - 1 if loop is None else loop
     out = bytearray()
     out.append(loop)
     out.append(n - 1)
-    for b1 in b1_ticks:
-        out.append(0x00)        # byte0: no amp-slide / env / noise-slide
-        out.append(b1)          # byte1: mix bits | amplitude
-        out.append(0x00)        # tone offset lo
-        out.append(0x00)        # tone offset hi
+    for t in ticks:
+        b1, noise = t if isinstance(t, tuple) else (t, 0)
+        out.append((noise & 0x1F) << 1)   # byte0: AddToNs, packed << 1
+        out.append(b1)                    # byte1: mix bits | amplitude
+        out.append(0x00)                  # tone offset lo
+        out.append(0x00)                  # tone offset hi
     return bytes(out)
 
 
@@ -57,15 +68,18 @@ def build_harmony() -> bytes:
 
 
 def build_snare() -> bytes:
-    """Snare: pure-noise burst, fast decay to silence (loops silent)."""
-    ticks = [0x10 | 0xF, 0x10 | 0xA, 0x10 | 0x6, 0x10 | 0x3,
-             0x10 | 0x1, 0x10 | 0x0, 0x10 | 0x0, 0x10 | 0x0]
-    return _sample_raw(ticks, loop=7)
+    """Snare: pure-noise burst at a mid noise period (hiss with some body
+    instead of the harsh period-1 maximum), fast decay to silence (loops
+    silent)."""
+    amps = [0xF, 0xA, 0x6, 0x3, 0x1, 0x0, 0x0, 0x0]
+    return _sample_raw([(0x10 | a, SNARE_NOISE) for a in amps], loop=7)
 
 
 def build_kick() -> bytes:
-    """Kick: short noise+tone thud, tone decay to silence (loops silent)."""
-    ticks = [0x00 | 0xF, 0x00 | 0xC, 0x80 | 0x9, 0x80 | 0x6,
+    """Kick: short noise+tone thud with a deep (dark) noise period, tone
+    decay to silence (loops silent)."""
+    ticks = [(0x00 | 0xF, KICK_NOISE), (0x00 | 0xC, KICK_NOISE),
+             0x80 | 0x9, 0x80 | 0x6,
              0x80 | 0x3, 0x80 | 0x1, 0x80 | 0x0, 0x80 | 0x0]
     return _sample_raw(ticks, loop=7)
 
