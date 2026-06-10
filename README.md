@@ -164,9 +164,11 @@ The bundled player is Bulba's, under its own terms — see [`LICENSING.md`](LICE
 
 Hear every mode in your browser on the **[demo page](https://revengator.github.io/spectrumizer/)**
 (GitHub Pages, nothing to install) — or click a clip to play it in GitHub's file
-viewer. Most are `examples/ode-to-joy.mid` rendered through the built-in software
-AY; the buzzer clips use `examples/pachelbel-canon.mid` (its low ground bass is
-where envelope bass shines). Regenerate with `pip install -e ".[demos]" && python examples/make_demos.py`.
+viewer. All clips are the bundled public-domain examples rendered through the
+built-in software AY: `ode-to-joy.mid` for most, `pachelbel-canon.mid` where a
+low ground bass or chords shine (buzzer, arps), and `korobeiniki.mid` (the
+Tetris folk tune, with a real GM drum track) for the drums clip. Regenerate
+with `pip install -e ".[demos]" && python examples/make_demos.py`.
 
 | Demo | What it shows |
 |---|---|
@@ -174,6 +176,7 @@ where envelope bass shines). Regenerate with `pip install -e ".[demos]" && pytho
 | ▶ [Chiptune](docs/audio/chiptune.mp3) | octave lead + synth drums |
 | ▶ [Chord arpeggios](docs/audio/arps.mp3) | triads faked on one channel via 50 Hz ornaments (`--arps`) |
 | ▶ [Echo](docs/audio/echo.mp3) | the lead repeated half a beat later, quieter (`--echo`) |
+| ▶ [Real drums + harmony](docs/audio/drums.mp3) | a GM drum track and the chords time-sharing channel C |
 | ▶ [Buzzer (pure)](docs/audio/buzzer.mp3) | bass = the AY hardware envelope, tone off (`--bass envelope`) |
 | ▶ [Buzzer (tone+env)](docs/audio/buzzer-tone.mp3) | envelope buzz, tone keeps the pitch (`--bass envelope-tone`) |
 | ▶ [No dynamics](docs/audio/chiptune-flat.mp3) | flat volume — vs the velocity dynamics |

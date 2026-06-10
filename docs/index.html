@@ -20,9 +20,9 @@
 </head>
 <body>
 <h1>spectrumizer — demos</h1>
-<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Most clips are
-<code>examples/ode-to-joy.mid</code> (the buzzer clips use
-<code>examples/pachelbel-canon.mid</code>) rendered through spectrumizer's software AY.</p>
+<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). All clips are the bundled
+public-domain examples (<code>ode-to-joy</code>, <code>pachelbel-canon</code>,
+<code>korobeiniki</code>) rendered through spectrumizer's software AY.</p>
 <div class="demo">
   <h2>Faithful (3-voice reduction)</h2>
   <p>Straight reduction of the source to lead / bass / harmony.</p>
@@ -46,6 +46,12 @@
   <p>Ode to Joy with --echo: channel C repeats the lead half a beat later and quieter — the other classic AY trick.</p>
   <audio controls preload="none" src="audio/echo.mp3"></audio>
   <p><code>spectrumizer ode-to-joy.mid --echo</code> &middot; <a href="audio/echo.pt3">download .pt3</a></p>
+</div>
+<div class="demo">
+  <h2>Real drums + harmony</h2>
+  <p>Korobeiniki — the public-domain Russian folk song behind Tetris — with a real GM drum track. Drums win channel C, but the chord voice fills the rows between hits and re-attacks after each one, so the percussion costs almost no harmony.</p>
+  <audio controls preload="none" src="audio/drums.mp3"></audio>
+  <p><code>spectrumizer korobeiniki.mid --style chiptune</code> &middot; <a href="audio/drums.pt3">download .pt3</a></p>
 </div>
 <div class="demo">
   <h2>Buzzer bass (pure envelope)</h2>

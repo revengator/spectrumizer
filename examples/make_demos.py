@@ -24,6 +24,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SRC = os.path.join(HERE, "ode-to-joy.mid")
 CANON = os.path.join(HERE, "pachelbel-canon.mid")   # low ground bass — buzzer demos
+KORO = os.path.join(HERE, "korobeiniki.mid")        # real GM drums — drums demo
 OUT = os.path.join(ROOT, "docs", "audio")
 RATE = 22050     # smaller files; still well above the AY's useful bandwidth
 BITRATE = 128    # kbps; plenty for the AY's simple spectrum
@@ -49,6 +50,13 @@ DEMOS = [
      "quieter — the other classic AY trick.",
      "spectrumizer ode-to-joy.mid --echo",
      dict(echo=True), dict()),
+    ("drums", "Real drums + harmony",
+     "Korobeiniki — the public-domain Russian folk song behind Tetris — with a "
+     "real GM drum track. Drums win channel C, but the chord voice fills the "
+     "rows between hits and re-attacks after each one, so the percussion costs "
+     "almost no harmony.",
+     "spectrumizer korobeiniki.mid --style chiptune",
+     dict(style="chiptune"), dict(), KORO),
     ("buzzer", "Buzzer bass (pure envelope)",
      "Pachelbel's Canon — its ground bass voiced low. Channel B is the AY "
      "hardware envelope itself, oscillating at the note pitch with the tone off "
@@ -108,9 +116,9 @@ _PAGE = """\
 </head>
 <body>
 <h1>spectrumizer — demos</h1>
-<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). Most clips are
-<code>examples/ode-to-joy.mid</code> (the buzzer clips use
-<code>examples/pachelbel-canon.mid</code>) rendered through spectrumizer's software AY.</p>
+<p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). All clips are the bundled
+public-domain examples (<code>ode-to-joy</code>, <code>pachelbel-canon</code>,
+<code>korobeiniki</code>) rendered through spectrumizer's software AY.</p>
 {items}
 <footer>Regenerate with <code>python examples/make_demos.py</code>.
 See the <a href="https://github.com/revengator/spectrumizer">repository</a>.</footer>

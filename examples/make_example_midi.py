@@ -7,6 +7,10 @@ redistribute:
     public domain. Its famous ground bass is the whole point of the piece, so
     voiced down into octaves 1-2 it is the ideal showcase for buzzer bass: the
     AY hardware envelope's coarse pitch still resolves the 8-note ostinato.
+  * korobeiniki.mid     — "Korobeiniki" (Russian folk song, 1861), public
+    domain — the tune Tetris made famous. Ours is an original arrangement
+    with a real GM drum track (channel 10), so it exercises the
+    drums + harmony time-share on channel C.
 
     python examples/make_example_midi.py
 """
@@ -72,6 +76,41 @@ CANON_V3 = [                                            # eighth-note arpeggios
 ]
 CANON_MELODY = CANON_V1 + CANON_V2 + CANON_V3
 
+# --- Korobeiniki (Russian folk song, 1861; public domain) ---------------------
+# The tune Tetris made famous, in A minor: 8 bars of 4/4 (32 beats). Chords:
+# Am Am E Am | Dm Am E Am. Four voices: melody (ch0), an octave-pumping bass
+# (ch1), a held chord line (ch2) and a kick/snare backbeat on the GM drum
+# channel (ch9) — the drum track is what showcases the channel-C time-share.
+A5K, G5K, F5K, E5K, D5K, C5K, B4K, A4K = 81, 79, 77, 76, 74, 72, 71, 69
+KORO_MELODY = [
+    (E5K, 1), (B4K, .5), (C5K, .5), (D5K, 1), (C5K, .5), (B4K, .5),
+    (A4K, 1), (A4K, .5), (C5K, .5), (E5K, 1), (D5K, .5), (C5K, .5),
+    (B4K, 1.5), (C5K, .5), (D5K, 1), (E5K, 1),
+    (C5K, 1), (A4K, 1), (A4K, 2),
+    (None, .5), (D5K, 1), (F5K, .5), (A5K, 1), (G5K, .5), (F5K, .5),
+    (E5K, 1.5), (C5K, .5), (E5K, 1), (D5K, .5), (C5K, .5),
+    (B4K, 1), (B4K, .5), (C5K, .5), (D5K, 1), (E5K, 1),
+    (C5K, 1), (A4K, 1), (A4K, 1), (None, 1),
+]
+
+# Bass: chiptune octave pumping, eighth notes root / root+12, one root per bar.
+_KORO_ROOTS = [45, 45, 40, 45, 38, 45, 40, 45]          # A2 A2 E2 A2 D2 A2 E2 A2
+KORO_BASS = [ev for r in _KORO_ROOTS for ev in ((r, .5), (r + 12, .5)) * 4]
+
+# Chord line: two half notes per bar (third/fifth of the bar's chord), kept
+# between the bass and the melody so the skyline reduction makes it the harmony.
+_KORO_CHORD = {'Am': ((60, 2), (64, 2)),                # C4, E4
+               'E':  ((56, 2), (59, 2)),                # G#3, B3
+               'Dm': ((62, 2), (65, 2))}                # D4, F4
+KORO_HARMONY = [ev for ch in ('Am', 'Am', 'E', 'Am', 'Dm', 'Am', 'E', 'Am')
+                for ev in _KORO_CHORD[ch]]
+
+# Drums (GM ch10): kick 36 on beats 1 & 3, snare 38 on 2 & 4, snare fill at the end.
+_KORO_BAR = [(36, .25), (None, .75), (38, .25), (None, .75),
+             (36, .25), (None, .75), (38, .25), (None, .75)]
+_KORO_FILL = _KORO_BAR[:7] + [(None, .25), (38, .25), (None, .25)]
+KORO_DRUMS = _KORO_BAR * 7 + _KORO_FILL
+
 
 def _add_voice(track, events, channel, velocity):
     delay = 0                                  # carry rest duration to next onset
@@ -88,7 +127,9 @@ def _add_voice(track, events, channel, velocity):
 
 
 def _build(name: str, tempo: int, melody: list, bass: list,
-           mel_vel: int = 100, bass_vel: int = 80) -> mido.MidiFile:
+           mel_vel: int = 100, bass_vel: int = 80,
+           harmony: list | None = None, harm_vel: int = 72,
+           drums: list | None = None, drum_vel: int = 110) -> mido.MidiFile:
     mid = mido.MidiFile(ticks_per_beat=TPB)
     lead = mido.MidiTrack(); mid.tracks.append(lead)
     lead.append(mido.MetaMessage('track_name', name=name, time=0))
@@ -96,6 +137,12 @@ def _build(name: str, tempo: int, melody: list, bass: list,
     _add_voice(lead, melody, channel=0, velocity=mel_vel)
     low = mido.MidiTrack(); mid.tracks.append(low)
     _add_voice(low, bass, channel=1, velocity=bass_vel)
+    if harmony:
+        chords = mido.MidiTrack(); mid.tracks.append(chords)
+        _add_voice(chords, harmony, channel=2, velocity=harm_vel)
+    if drums:
+        kit = mido.MidiTrack(); mid.tracks.append(kit)
+        _add_voice(kit, drums, channel=9, velocity=drum_vel)
     return mid
 
 
@@ -105,6 +152,9 @@ def main():
         'ode-to-joy.mid': _build('Ode to Joy', 120, ODE_MELODY, ODE_BASS),
         'pachelbel-canon.mid': _build('Canon in D', 125, CANON_MELODY, CANON_BASS,
                                       mel_vel=88, bass_vel=104),
+        'korobeiniki.mid': _build('Korobeiniki', 150, KORO_MELODY, KORO_BASS,
+                                  bass_vel=92, harmony=KORO_HARMONY,
+                                  drums=KORO_DRUMS),
     }
     for fname, mid in files.items():
         out = os.path.join(here, fname)
