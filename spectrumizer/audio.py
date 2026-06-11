@@ -155,13 +155,15 @@ def render_pcm(module: Module, *, sample_rate: int = DEFAULT_RATE,
         npd = noise_period if noise_period is not None else ((noise_r6 & 0x1F) or 1)
         noise_step = (AY_CLOCK / 16.0 / npd) / sample_rate
 
-        # AY envelope this frame: step rate = clock / (256 * period). Only set up
-        # when a channel actually uses it; retrigger restarts the shape.
+        # AY envelope this frame: step rate = clock / (16 * period), same /16
+        # prescaler as the tones (one 16-step ramp every 256*period clocks).
+        # Only set up when a channel actually uses it; retrigger restarts the
+        # shape.
         if any_env:
             env_vol_levels, env_loop = _ENV_SHAPES[env_shape & 0x0F]
             env_vols = [AY_VOL[lv] for lv in env_vol_levels]
             n_env = len(env_vols)
-            env_step = (AY_CLOCK / 256.0 / max(1, env_period)) / sample_rate
+            env_step = (AY_CLOCK / 16.0 / max(1, env_period)) / sample_rate
             if env_retrig:
                 env_pos, env_acc = 0, 0.0
             if env_pos >= n_env:

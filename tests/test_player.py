@@ -249,10 +249,29 @@ def test_mixer_negative_logic_matches_real_player():
 def test_envelope_period_for_pitch():
     from spectrumizer.pt3 import envelope_period_for, envelope_steps
     assert envelope_steps(10) == 32 and envelope_steps(8) == 16   # triangle vs saw
-    assert envelope_period_for(0x0D10, 10) == round(0x0D10 / 512)  # EP = P/(16*N)
-    assert envelope_period_for(64, 10) >= 1                        # never below 1
+    # the classic AY buzzer relations: EP = TP/32 (triangle), EP = TP/16 (saw)
+    assert envelope_period_for(0x0D10, 10) == round(0x0D10 / 32)
+    assert envelope_period_for(0x0D10, 8) == round(0x0D10 / 16)
+    assert envelope_period_for(1, 10) >= 1                         # never below 1
     # a deeper note (larger tone period) maps to a larger envelope period
     assert envelope_period_for(3344, 10) > envelope_period_for(836, 10)
+
+
+def test_buzzer_stays_in_tune_with_the_tone():
+    # envelope-tone bass: the buzz must sit within ~2% of the tone across the
+    # bass octaves, or its amplitude modulation beats audibly against the tone
+    # (heard as sputtering). The AY steps the envelope at clock/16. Above the
+    # bass register EP gets too small for this guarantee — that is the
+    # documented "resolves best in the low octaves" limit.
+    from spectrumizer.audio import AY_CLOCK, build_pt3_table
+    from spectrumizer.pt3 import envelope_period_for, envelope_steps
+    table = build_pt3_table()
+    for idx in range(24):                                # PT3 octaves 1..2
+        tp = table[idx]
+        ep = envelope_period_for(tp, 10)
+        f_tone = AY_CLOCK / (16 * tp)
+        f_env = AY_CLOCK / (16 * ep * envelope_steps(10))
+        assert abs(f_env - f_tone) / f_tone < 0.02, f"note {idx}"
 
 
 def test_vibrato_sample_encodes_tone_offsets():

@@ -71,11 +71,14 @@ def envelope_period_for(tone_period: int, shape: int) -> int:
     """AY envelope period (R11/R12) so a *repeating* envelope `shape` buzzes at
     the pitch of a tone whose period is `tone_period`.
 
-    Tone freq = clock/(16*tone_period); envelope freq = clock/(256*EP*N) with N
-    steps per cycle. Equating them gives EP = tone_period / (16*N). EP is small,
-    so buzzer pitch is coarse — it resolves best in the low octaves (the bass).
+    The AY steps its envelope at clock/16 (the YM2149 at clock/8 with twice the
+    levels — same ramp rate), so envelope freq = clock/(16*EP*N) with N steps
+    per cycle, while tone freq = clock/(16*tone_period). Equating them gives
+    EP = tone_period / N — the classic buzzer relations EP = TP/16 (sawtooth)
+    and EP = TP/32 (triangle). Rounding EP detunes the buzz by up to half a
+    step, so it resolves best in the low octaves (the bass), where EP is large.
     """
-    return max(1, round(tone_period / (16 * envelope_steps(shape))))
+    return max(1, round(tone_period / envelope_steps(shape)))
 
 
 def _check_volume(vol: int) -> int:
