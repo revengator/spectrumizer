@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "spectrumizer"
-description = "Generate ZX Spectrum AY (PT3) music from MIDI and other sources."
+description = "ZX Spectrum AY music toolkit: MIDI to PT3, software-AY audition, self-playing .tap/.sna packaging, and PT3 back to MIDI."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
