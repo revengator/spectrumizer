@@ -381,6 +381,41 @@ def test_pattern_boundary_reattack_keeps_arp_ornament():
     assert reattack is not None and reattack.ornament == ORN_MAJOR
 
 
+def _shifted_chord_song(offset):
+    song = _chord_song()
+    for n in song.notes:
+        n.pitch += offset
+    return song
+
+
+def test_auto_transpose_brings_extreme_registers_back():
+    # the same piece written two octaves up / down must come back to the
+    # comfortable register — and by whole octaves, so the key is untouched
+    reference, _ = arrange(_chord_song())
+    high, sh = arrange(_shifted_chord_song(24), auto_transpose=True)
+    low, sl = arrange(_shifted_chord_song(-24), auto_transpose=True)
+    assert sh['transpose'] == -24 and sl['transpose'] == 24
+    assert high == reference and low == reference
+
+
+def test_auto_transpose_is_a_noop_when_comfortable():
+    plain, _ = arrange(_chord_song())
+    auto, stats = arrange(_chord_song(), auto_transpose=True)
+    assert stats['transpose'] == 0 and stats['auto_transpose'] is True
+    assert auto == plain
+
+
+def test_auto_transpose_keeps_the_manual_offset_on_top():
+    _, stats = arrange(_shifted_chord_song(24), auto_transpose=True,
+                       transpose=-12)
+    assert stats['transpose'] == -36
+
+
+def test_auto_transpose_shift_of_nothing_is_zero():
+    from spectrumizer.arrange import auto_transpose_shift
+    assert auto_transpose_shift([]) == 0
+
+
 def test_vibrato_swaps_the_lead_sample():
     from spectrumizer.pt3 import S_LEAD, S_LEAD_VIB
     song = _chord_song()

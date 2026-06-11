@@ -28,6 +28,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="PT3 speed (frames/row). Default: derived from tempo.")
     p.add_argument("--transpose", type=int, default=0,
                    help="semitones to shift all pitches (tune AY octave by ear).")
+    p.add_argument("--auto-transpose", action="store_true",
+                   help="shift the piece by whole octaves (key preserved) so "
+                        "its range sits in the AY's comfortable register; any "
+                        "--transpose is applied on top.")
     p.add_argument("--name", default=None, help="PT3 module title (<=32 chars).")
     p.add_argument("--author", default="SPECTRUMIZER",
                    help="PT3 module author (<=32 chars).")
@@ -94,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
     pt3, stats = arrange(
         song, style=args.style, rows_per_beat=args.rows_per_beat,
         speed=args.speed, transpose=args.transpose,
+        auto_transpose=args.auto_transpose,
         name=args.name, author=args.author, loop_pos=args.loop_pos,
         dynamics=args.dynamics, bass=args.bass, arps=args.arps,
         arp_speed=args.arp_speed, echo=args.echo, vibrato=args.vibrato)
@@ -107,8 +112,12 @@ def main(argv: list[str] | None = None) -> int:
         pats = f"patterns={stats['patterns']}"
         if stats['positions'] != stats['patterns']:    # deduplicated repeats
             pats += f" (x{stats['positions']} positions)"
+        trans = ""
+        if stats['transpose'] or stats['auto_transpose']:
+            trans = (f"transpose={stats['transpose']:+d}"
+                     + ("(auto)" if stats['auto_transpose'] else "") + "  ")
         print(f"  style={stats['style']}  speed={stats['speed']}  "
-              f"tempo~{stats['tempo_bpm']}bpm  {pats}  "
+              f"tempo~{stats['tempo_bpm']}bpm  {trans}{pats}  "
               f"bytes={stats['bytes']}")
         b_label = {'envelope': 'buzzer',
                    'envelope-tone': 'buzzer+tone'}.get(stats['bass'], 'bass')

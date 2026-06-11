@@ -41,6 +41,37 @@ _DRUM_RANK = {S_KICK: 3, S_SNARE: 2, S_HAT_OPEN: 1, S_HAT: 0}
 # Default AY envelope shape for buzzer bass: 10 = \/\/ repeating triangle.
 BUZZER_SHAPE = 10
 
+# The AY's comfortable register, as MIDI numbers under the standard PT3 mapping
+# (midi_to_pt3_byte): from the format floor (C-1 — notes below it fold and break
+# contours; deep basses are fine, the tone table resolves them) up to B-6, clear
+# of octaves 7-8 where the tiny tone periods turn audibly out of tune. The
+# centre is calibrated so every bundled hand-registered example auto-shifts 0.
+AUTO_RANGE = (24, 95)
+AUTO_CENTER = 57      # where a piece's duration-weighted mean pitch sits best
+
+
+def auto_transpose_shift(notes: list[Note]) -> int:
+    """The octave shift (semitones, a multiple of 12) that best fits the
+    pitched notes into the AY's comfortable register.
+
+    Octave shifts only, so the key is preserved. Maximises the note-duration
+    landing inside AUTO_RANGE; ties prefer the shift that centres the
+    duration-weighted mean pitch on AUTO_CENTER, then the smallest move.
+    """
+    if not notes:
+        return 0
+    weight = sum(n.dur for n in notes)
+    mean = (sum(n.pitch * n.dur for n in notes) / weight) if weight else \
+        sum(n.pitch for n in notes) / len(notes)
+    lo, hi = AUTO_RANGE
+
+    def score(k: int) -> tuple:
+        sh = 12 * k
+        inside = sum(n.dur for n in notes if lo <= n.pitch + sh <= hi)
+        return (inside, -abs(mean + sh - AUTO_CENTER), -abs(k))
+
+    return 12 * max(range(-5, 6), key=score)
+
 
 def vol_from_velocity(velocity: int, ceil: int, vmax: int) -> int:
     """Map a MIDI velocity to an AY volume in 1..ceil, scaled so the piece's
@@ -102,6 +133,7 @@ def _drums_to_placed(drums: list[Note], rows_per_beat: int, total_rows: int,
 
 def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
             speed: int | None = None, transpose: int = 0,
+            auto_transpose: bool = False,
             name: str | None = None, author: str = 'SPECTRUMIZER',
             loop_pos: int = 0, dynamics: bool = True,
             bass: str = 'normal', arps: bool = False, arp_speed: int = 1,
@@ -129,8 +161,13 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     delayed-vibrato sample — the sustain wobbles the tone period ±3 units at
     6.25 Hz, encoded per tick inside the sample so it costs nothing in the
     patterns.
+    `auto_transpose`: shift the piece by whole octaves so its range sits in
+    the AY's comfortable register (see `auto_transpose_shift`); `transpose`
+    is then applied on top as a manual offset.
     """
     speed_v, total_rows = plan_grid(song, rows_per_beat, speed)
+    if auto_transpose:
+        transpose += auto_transpose_shift(song.notes)
 
     # Channel C: drums win; then arps; then echo; then synth-drums / harmony.
     # With real drums the harmony is multiplexed into the gaps between hits,
@@ -222,6 +259,8 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     stats = {
         'style': style,
         'dynamics': dynamics,
+        'transpose': transpose,
+        'auto_transpose': auto_transpose,
         'bass': bass,
         'arps': arps,
         'arp_speed': arp_speed,

@@ -57,6 +57,10 @@ spectrumizer song.mid -o song.pt3 --style chiptune
 spectrumizer song.mid --transpose -12 --rows-per-beat 4 --speed 6 \
     --name "MY THEME" --author "ME"
 
+# ...or let it fit the register itself: whole-octave shift (key preserved) into
+# the AY sweet spot; any --transpose is applied on top
+spectrumizer song.mid --auto-transpose
+
 # dynamics: MIDI velocity drives per-note volume (on by default)
 spectrumizer song.mid -o song.pt3 --no-dynamics      # ...or flat per-channel volume
 
@@ -111,6 +115,11 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
     channel C.
   - dynamics — MIDI velocity → per-note AY volume, normalised so the piece's
     loudest note hits each channel's ceiling (on by default; `--no-dynamics`).
+  - auto-transpose (`--auto-transpose`) — shift the piece by whole octaves
+    (key preserved) so the duration-weighted bulk of its notes sits in the
+    AY's comfortable register (up to PT3 octave 6 — clear of the coarse-pitch
+    top octaves — and off the format floor), instead of tuning `--transpose`
+    by ear. A well-registered piece shifts 0.
   - vibrato (`--vibrato`) — the lead's sustain wobbles the tone period (±3
     units at 6.25 Hz, delayed past the attack). PT3 samples carry a signed
     per-tick tone offset, so the vibrato lives inside the instrument and
@@ -230,7 +239,8 @@ pytest -q
 - **Generate:** MIDI → PT3, faithful + chiptune, velocity-driven dynamics,
   **hi-hat percussion** (GM cymbals mapped, off-beat hats in the synth groove),
   **chord arpeggios** with the full triad/7th/sus vocabulary (`--arps`,
-  `--arp-speed`), **echo** (`--echo`), **lead vibrato** (`--vibrato`), and
+  `--arp-speed`), **echo** (`--echo`), **lead vibrato** (`--vibrato`),
+  **auto-transpose** into the AY register (`--auto-transpose`), and
   **buzzer bass** through the AY hardware envelope (`--bass envelope` /
   `envelope-tone`).
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
@@ -239,7 +249,6 @@ pytest -q
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
 - **Planned:**
-  - **Auto-transpose** — fit the piece's range to the AY instead of tuning by ear.
   - MusicXML (music21) input · PT3 slides/glissando in the audition player ·
     raw-AY register-dump export (`.psg` / `.vtx`).
 
