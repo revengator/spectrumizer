@@ -22,15 +22,31 @@ file and spectrumizer arranges it down to the AY's 3 channels (+ noise).
 > copyrighted. Only bundle **public-domain or your own** music into a release.
 > Read [`LICENSING.md`](LICENSING.md).
 
+## The toolkit
+
+Four commands, one round trip:
+
+| Command | Does | Details |
+|---|---|---|
+| **`spectrumizer`** | **MIDI → `.pt3`** — arranges any MIDI down to the AY's 3 channels: faithful or chiptune style, velocity dynamics, GM drums, chord arpeggios, echo, vibrato, buzzer bass, auto-transpose. | [Use](#use) |
+| **`spectrumizer-play`** | **`.pt3` → your speakers** — auditions any module through a built-in software AY (stereo WAV; no Spectrum, no extra software). | [Listen](#listen-to-it-no-spectrum-needed) |
+| **`spectrumizer-pack`** | **`.pt3` → `.tap` / `.sna`** — a self-playing tape or 128K snapshot for an emulator or real hardware, with a title screen. | [Package](#hear-it-on-a-real-spectrum--emulator) |
+| **`spectrumizer-export`** | **`.pt3` → MIDI** — the reverse pipeline: recovers the notes from a module (yours or anyone's) into a DAW-ready file. | [Export](#get-the-notes-back-out-pt3--midi) |
+
+Together they close the loop **compose → hear → ship → recover**: a `.pt3` you
+generated, downloaded or recovered can be auditioned, packaged for hardware,
+exported back to notes, edited, and re-spectrumized.
+
 ## Install
 
 ```bash
 pip install spectrumizer    # from PyPI — installs spectrumizer / spectrumizer-play / spectrumizer-pack / spectrumizer-export
 ```
 
-The `spectrumizer` and `spectrumizer-play` commands are pure-Python.
-`spectrumizer-pack` (package a `.pt3` for an emulator) additionally needs
-[**sjasmplus**](https://github.com/z00m128/sjasmplus) on PATH to assemble the player.
+The `spectrumizer`, `spectrumizer-play` and `spectrumizer-export` commands are
+pure-Python. `spectrumizer-pack` (package a `.pt3` for an emulator) additionally
+needs [**sjasmplus**](https://github.com/z00m128/sjasmplus) on PATH to assemble
+the player.
 
 Or from a clone (for development):
 
@@ -54,12 +70,18 @@ spectrumizer song.mid -o song.pt3                 # or: python -m spectrumizer s
 spectrumizer song.mid -o song.pt3 --style chiptune
 
 # tune the AY octave by ear, change grid/tempo
-spectrumizer song.mid --transpose -12 --rows-per-beat 4 --speed 6 \
-    --name "MY THEME" --author "ME"
+spectrumizer song.mid --transpose -12 --rows-per-beat 4 --speed 6
 
 # ...or let it fit the register itself: whole-octave shift (key preserved) into
 # the AY sweet spot; any --transpose is applied on top
 spectrumizer song.mid --auto-transpose
+
+# module metadata: stored in the PT3 header, read back by trackers, the
+# audition player and spectrumizer-pack's title screen
+spectrumizer song.mid --name "MY THEME" --author "ME"
+
+# where to restart after the last pattern (a position index, e.g. skip an intro)
+spectrumizer song.mid --loop-pos 2
 
 # dynamics: MIDI velocity drives per-note volume (on by default)
 spectrumizer song.mid -o song.pt3 --no-dynamics      # ...or flat per-channel volume
@@ -84,12 +106,56 @@ spectrumizer song.mid --vibrato
 spectrumizer song.mid -o song.pt3 --play
 ```
 
-Run `spectrumizer --help` for all flags.
+Run `spectrumizer --help` for all flags. No MIDI at hand?
+`python examples/make_example_midi.py` regenerates four public-domain test
+pieces in `examples/` (Ode to Joy, Pachelbel's Canon, Korobeiniki, Greensleeves).
+
+**The flags compose** — `--style chiptune --vibrato --bass envelope-tone --arps`
+is a valid (and good) combination. The only contention is **channel C**, which
+is one channel: real GM drums in the source always take it (the harmony fills
+the gaps between hits); otherwise `--arps` / `--echo` (mutually exclusive)
+replace its default voice; otherwise chiptune puts synth drums there and
+faithful the harmony. Every run prints what it decided:
+
+```
+spectrumizer: greensleeves.mid -> song.pt3
+  style=faithful  speed=7  tempo~107.1bpm (source 110.0)  patterns=3  bytes=989
+  A=lead(36)  B=bass(16)  C=arp(36)
+```
+
+`speed` is whole frames per row at 50 Hz, so the playable tempo is quantised —
+the stats show the tempo the Spectrum will actually play, with the source tempo
+alongside when they differ.
+
+### From Python
+
+The CLIs are thin wrappers — every stage is a library call:
+
+```python
+from spectrumizer.inputs.midi import load_midi
+from spectrumizer.arrange import arrange
+
+pt3, stats = arrange(load_midi("song.mid"), style="chiptune", arps=True)
+with open("song.pt3", "wb") as f:
+    f.write(pt3)
+```
+
+…and the reverse direction:
+
+```python
+from spectrumizer.pt3.player import parse_module
+from spectrumizer.export import module_to_song, write_midi
+
+with open("song.pt3", "rb") as f:
+    song = module_to_song(parse_module(f.read()))
+write_midi(song, "song.mid")
+```
 
 ## How it works
 
 ```
-MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→ .pt3
+MIDI ─(inputs/midi.py)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→ .pt3
+.pt3 ─(pt3/player.py)→ rows ─(export.py)→ IR ─(mido)→ MIDI        ← the reverse
 ```
 
 - **`spectrumizer/inputs/`** — MIDI → IR (via `mido`). Tempo changes are folded
@@ -137,7 +203,12 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
     collapse to the strongest (kick > snare > cymbals).
   - pattern dedup — identical 64-row patterns are stored once and replayed
     through the PT3 position list (repeats cost 1 byte, not a pattern).
-- **`spectrumizer/ir.py`** — the source-agnostic note model both inputs target.
+- **`spectrumizer/export.py`** — the reverse arranger: `module_to_song`
+  rebuilds the IR from a decoded module (percussion recognised by noise
+  colour, arp ornaments expanded back into chords) and `write_midi`
+  serialises it as a type-1 MIDI file.
+- **`spectrumizer/ir.py`** — the source-agnostic note model in the middle:
+  input adapters produce it, the arranger consumes it, the export rebuilds it.
 
 ### PT3 invariants baked in (from the player source)
 
@@ -156,10 +227,12 @@ C right) and plays it through your system audio player (`afplay` on macOS;
 ```bash
 spectrumizer-play song.pt3            # render song.wav and play it
 spectrumizer-play song.pt3 --no-play  # just write the .wav
+spectrumizer-play song.pt3 --loops 3      # play the loop section three times
 spectrumizer-play song.pt3 --seconds 30   # cap length, looping the song's tail
 spectrumizer-play song.pt3 --rate 22050   # faster render (lower fidelity)
 spectrumizer-play song.pt3 --tuning equal # equal-tempered instead of the PT3 table
 spectrumizer-play song.pt3 --stereo mono  # mono (default abc = A-left/B-centre/C-right)
+spectrumizer-play song.pt3 --separation 1.0  # stereo width 0..1 (default 0.7)
 spectrumizer-play song.pt3 --noise-period 5  # force a noise period (default: the module's real one)
 ```
 
@@ -185,6 +258,7 @@ can load in Fuse / ZEsarUX (or on real hardware):
 spectrumizer-pack song.pt3 -o song.tap     # autoloading tape (BASIC + CODE)
 spectrumizer-pack song.pt3 --sna song.sna  # 128K snapshot (boots straight into the tune)
 spectrumizer-pack song.pt3 --tap a.tap --sna a.sna   # both at once
+spectrumizer-pack song.pt3 --name MYTUNE   # tape/CODE block name (<=10 chars)
 ```
 
 The music uses the AY, so it needs a **128K** machine: the `.sna` is a 128K
@@ -205,6 +279,12 @@ study a module, edit it in a DAW, or re-spectrumize it after changes.
 ```bash
 spectrumizer-export song.pt3              # → song.mid
 spectrumizer-export song.pt3 --no-merge   # keep pattern-boundary re-attacks
+spectrumizer-export song.pt3 --rows-per-beat 8  # halve the tempo (barlines only,
+                                                # PT3 doesn't store the grid)
+
+# the full circle: recover a module, edit it in a DAW, re-spectrumize it
+spectrumizer-export old-module.pt3 -o draft.mid
+spectrumizer draft.mid --style chiptune --arps -o new-module.pt3 --play
 ```
 
 What you get: channels **A/B/C as three tracks** at the module's effective
