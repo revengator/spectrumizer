@@ -16,7 +16,7 @@ from __future__ import annotations
 from ..ir import Song, Note
 from ..pt3 import (
     midi_to_pt3_byte, NOTE_TO_BYTE, build_pt3,
-    DEFAULT_SAMPLES, DEFAULT_ORNAMENTS,
+    DEFAULT_SAMPLES, DEFAULT_ORNAMENTS, arp_ornaments,
     S_LEAD, S_BASS, S_HARMONY, S_SNARE, S_KICK, S_BUZZER, S_BUZZER_TONE,
     S_LEAD_VIB, S_HAT, S_HAT_OPEN, ORN_EMPTY, envelope_period_for,
 )
@@ -104,7 +104,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
             speed: int | None = None, transpose: int = 0,
             name: str | None = None, author: str = 'SPECTRUMIZER',
             loop_pos: int = 0, dynamics: bool = True,
-            bass: str = 'normal', arps: bool = False,
+            bass: str = 'normal', arps: bool = False, arp_speed: int = 1,
             echo: bool = False, vibrato: bool = False) -> tuple[bytes, dict]:
     """Arrange `song` and return (pt3_bytes, stats).
 
@@ -116,9 +116,12 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
     characteristic deep AY sound, coarse pitch), or 'envelope-tone' (tone keeps
     the exact pitch, the envelope adds the buzz — pitch-accurate at any register).
     `arps`: route channel C to chord arpeggios — each source chord becomes its
-    root + a major/minor ornament cycling at 50 Hz, faking the full triad on one
+    root + an interval ornament (major/minor triads, dominant/major/minor
+    sevenths, sus2/sus4) cycling at frame rate, faking the full chord on one
     channel. Real drums in the source still take channel C; otherwise arps
     replace the harmony / synth-drums voice there.
+    `arp_speed`: frames each arp chord tone holds (default 1 = the classic
+    50 Hz blur; higher rates ripple audibly).
     `echo`: route channel C to a delayed, quieter copy of the lead (the classic
     AY echo: half a beat later at ~8/15 volume, same timbre). Outranked by real
     drums and by `arps`.
@@ -207,7 +210,12 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
             unique.append(pat)
         order.append(index[pat])
 
-    pt3 = build_pt3(unique, dict(DEFAULT_SAMPLES), dict(DEFAULT_ORNAMENTS),
+    ornaments = dict(DEFAULT_ORNAMENTS)
+    arp_speed = max(1, arp_speed)
+    if arp_speed != 1:                  # slower arps: rebuild the arp ornaments
+        ornaments.update(arp_ornaments(arp_speed))
+
+    pt3 = build_pt3(unique, dict(DEFAULT_SAMPLES), ornaments,
                     name=name or song.name or "SPECTRUMIZED",
                     author=author, speed=speed_v, order=order, loop_pos=loop_pos)
 
@@ -216,6 +224,7 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         'dynamics': dynamics,
         'bass': bass,
         'arps': arps,
+        'arp_speed': arp_speed,
         'echo': echo,
         'vibrato': vibrato,
         'speed': speed_v,

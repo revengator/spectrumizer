@@ -11,6 +11,10 @@ redistribute:
     domain — the tune Tetris made famous. Ours is an original arrangement
     with a real GM drum track (channel 10), so it exercises the
     drums + harmony time-share on channel C.
+  * greensleeves.mid    — "Greensleeves" (traditional English tune, 16th
+    century), public domain. Ours is an original harmonisation rich in
+    seventh and suspended chords (Am7, Fmaj7, G7, Em7, Cmaj7, Esus4 -> E7),
+    so it exercises the arps-v2 chord vocabulary on a famous melody.
 
     python examples/make_example_midi.py
 """
@@ -115,6 +119,56 @@ _KORO_FILL = _KORO_BAR[:13] + [(None, .25), (38, .25), (None, .25)]
 KORO_DRUMS = _KORO_BAR * 7 + _KORO_FILL
 
 
+# --- Greensleeves (traditional, 16th century; public domain) -------------------
+# Verse + chorus in A minor, 3/4, with our own harmonisation rich in sevenths
+# and suspensions: | Am7 | Fmaj7 | G7 | Em7 | Am7 | E7 | Esus4 E7 | Am | and the
+# chorus opening on Cmaj7 — every cadence lands on the classic 4-3 suspension.
+# The final bar is short by the one-beat pickup, so the loop wraps in time.
+GREEN_MELODY = [
+    (69, 1),                                   # pickup: "A-las..."
+    (72, 2), (74, 1),                          # Am7
+    (76, 1.5), (77, .5), (76, 1),              # Fmaj7
+    (74, 2), (71, 1),                          # G7
+    (67, 1.5), (69, .5), (71, 1),              # Em7
+    (72, 2), (69, 1),                          # Am7
+    (69, 1.5), (68, .5), (69, 1),              # E7
+    (71, 2), (68, 1),                          # Esus4 -> E7
+    (69, 3),                                   # Am
+    (79, 3),                                   # Cmaj7 ("Green-sleeves...")
+    (79, 1.5), (78, .5), (76, 1),              # G
+    (74, 2), (71, 1),                          # G7
+    (67, 1.5), (69, .5), (71, 1),              # Em7
+    (72, 2), (69, 1),                          # Am7
+    (69, 1.5), (68, .5), (69, 1),              # E7
+    (71, 2), (68, 1),                          # Esus4 -> E7
+    (69, 2),                                   # Am (short: the pickup returns)
+]
+
+_AM7 = (55, 57, 60, 64)                        # G3 A3 C4 E4
+_EM7 = (52, 55, 59, 62)                        # E3 G3 B3 D4
+_E7 = (52, 56, 59, 62)                         # E3 G#3 B3 D4
+_ESUS4 = (52, 57, 59)                          # E3 A3 B3
+_G7 = (55, 59, 62, 65)                         # G3 B3 D4 F4
+GREEN_CHORDS = [
+    (None, 1),                                 # the pickup is unharmonised
+    (_AM7, 3), ((53, 57, 60, 64), 3),          # Am7, Fmaj7 (F3 A3 C4 E4)
+    (_G7, 3), (_EM7, 3), (_AM7, 3), (_E7, 3),
+    (_ESUS4, 2), (_E7, 1),                     # the 4-3 suspension resolves
+    ((57, 60, 64), 3),                         # Am
+    ((48, 52, 55, 59), 3),                     # Cmaj7 (C3 E3 G3 B3)
+    ((55, 59, 62), 3),                         # G
+    (_G7, 3), (_EM7, 3), (_AM7, 3), (_E7, 3),
+    (_ESUS4, 2), (_E7, 1),
+    ((57, 60, 64), 2),                         # Am
+]
+
+GREEN_BASS = [(None, 1),
+              (45, 3), (41, 3), (43, 3), (40, 3),     # A2 F2 G2 E2
+              (45, 3), (40, 3), (40, 3), (45, 3),     # A2 E2 E2 A2
+              (36, 3), (43, 3), (43, 3), (40, 3),     # C2 G2 G2 E2
+              (45, 3), (40, 3), (40, 3), (45, 2)]     # A2 E2 E2 A2
+
+
 def _add_voice(track, events, channel, velocity):
     delay = 0                                  # carry rest duration to next onset
     for note, beats in events:
@@ -122,11 +176,15 @@ def _add_voice(track, events, channel, velocity):
         if note is None:                       # a rest
             delay += ticks
             continue
-        track.append(mido.Message('note_on', note=note, velocity=velocity,
-                                  channel=channel, time=delay))
-        track.append(mido.Message('note_off', note=note, velocity=0,
-                                  channel=channel, time=ticks))
-        delay = 0
+        pitches = note if isinstance(note, tuple) else (note,)
+        for p in pitches:                      # a tuple is a stacked chord
+            track.append(mido.Message('note_on', note=p, velocity=velocity,
+                                      channel=channel, time=delay))
+            delay = 0
+        for i, p in enumerate(pitches):
+            track.append(mido.Message('note_off', note=p, velocity=0,
+                                      channel=channel,
+                                      time=ticks if i == 0 else 0))
 
 
 def _build(name: str, tempo: int, melody: list, bass: list,
@@ -158,6 +216,9 @@ def main():
         'korobeiniki.mid': _build('Korobeiniki', 150, KORO_MELODY, KORO_BASS,
                                   bass_vel=92, harmony=KORO_HARMONY,
                                   drums=KORO_DRUMS),
+        'greensleeves.mid': _build('Greensleeves', 110, GREEN_MELODY,
+                                   GREEN_BASS, mel_vel=96, bass_vel=84,
+                                   harmony=GREEN_CHORDS, harm_vel=70),
     }
     for fname, mid in files.items():
         out = os.path.join(here, fname)

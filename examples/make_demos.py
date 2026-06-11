@@ -32,6 +32,7 @@ ROOT = os.path.dirname(HERE)
 SRC = os.path.join(HERE, "ode-to-joy.mid")
 CANON = os.path.join(HERE, "pachelbel-canon.mid")   # low ground bass — buzzer demos
 KORO = os.path.join(HERE, "korobeiniki.mid")        # real GM drums — drums demo
+GREEN = os.path.join(HERE, "greensleeves.mid")      # 7th/sus chords — arps v2 demo
 OUT = os.path.join(ROOT, "docs", "audio")
 RATE = 22050     # smaller files; still well above the AY's useful bandwidth
 BITRATE = 128    # kbps; plenty for the AY's simple spectrum
@@ -53,6 +54,13 @@ DEMOS = [
      "triad — fake polyphony, the classic AY/Follin trick.",
      "spectrumizer pachelbel-canon.mid --arps",
      dict(arps=True), dict(), CANON),
+    ("arps7", "Seventh & sus arpeggios",
+     "Greensleeves, harmonised with sevenths and suspensions: the chord "
+     "detector reads Am7, Fmaj7, G7, Em7, Cmaj7 and the Esus4 cadences, and "
+     "channel C cycles each chord's full tones — four-note harmony from one "
+     "AY channel.",
+     "spectrumizer greensleeves.mid --arps",
+     dict(arps=True), dict(), GREEN),
     ("echo", "Echo",
      "Ode to Joy with --echo: channel C repeats the lead half a beat later and "
      "quieter — the other classic AY trick.",
@@ -100,12 +108,13 @@ DEMOS = [
      dict(style="chiptune"), dict(stereo="mono")),
     ("combo", "Everything at once",
      "Pachelbel's Canon with the flags combined: chiptune octave lead with "
-     "vibrato on A, tone+envelope buzzer bass on B and chord arpeggios on C — "
-     "the whole piece an octave down, at flat volume.",
+     "vibrato on A, tone+envelope buzzer bass on B and chord arpeggios on C "
+     "slowed to 2 frames per tone (--arp-speed 2, an audible ripple) — the "
+     "whole piece an octave down, at flat volume.",
      "spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone "
-     "--arps --vibrato --transpose -12 --no-dynamics",
-     dict(style="chiptune", bass="envelope-tone", arps=True, vibrato=True,
-          transpose=-12, dynamics=False), dict(), CANON),
+     "--arps --arp-speed 2 --vibrato --transpose -12 --no-dynamics",
+     dict(style="chiptune", bass="envelope-tone", arps=True, arp_speed=2,
+          vibrato=True, transpose=-12, dynamics=False), dict(), CANON),
 ]
 
 _PAGE = """\
@@ -133,7 +142,8 @@ _PAGE = """\
 <h1>spectrumizer — demos</h1>
 <p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). All clips are the bundled
 public-domain examples (<code>ode-to-joy</code>, <code>pachelbel-canon</code>,
-<code>korobeiniki</code>) rendered through spectrumizer's software AY. Each
+<code>korobeiniki</code>, <code>greensleeves</code>) rendered through
+spectrumizer's software AY. Each
 <code>.sna</code> is a self-playing 128K snapshot of the same module — load it
 in any Spectrum emulator to hear the real player.</p>
 {items}

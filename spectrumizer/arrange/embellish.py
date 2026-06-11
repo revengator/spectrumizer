@@ -7,8 +7,9 @@ Passes:
     hats on the off-eighths, an open hat closing each bar) when the source has
     no drum track, so chiptune output still has percussive drive.
   * chord_arps        — fake polyphony on one channel: play each chord's root and
-    cycle a major/minor ornament (root, +third, +fifth) at 50 Hz, so a single AY
-    channel implies the whole triad (the classic AY/Follin trick).
+    cycle the matching interval ornament (triads, sevenths, sus2/sus4) at frame
+    rate, so a single AY channel implies the whole chord (the classic AY/Follin
+    trick).
   * echo_lead         — a delayed, quieter copy of the lead on a free channel
     (the other classic AY trick).
   * multiplex_drums_harmony — drums + harmony time-shared on one channel: drum
@@ -20,12 +21,15 @@ Passes:
 from __future__ import annotations
 
 from .model import Placed
-from .chords import identify_triad, group_by_onset
+from .chords import identify_chord, group_by_onset
 from .quantize import note_rows
 from ..ir import Note
-from ..pt3 import midi_to_pt3_byte, ORN_OCTAVE, ORN_EMPTY, ORN_MAJOR, ORN_MINOR
+from ..pt3 import (midi_to_pt3_byte, ORN_OCTAVE, ORN_EMPTY, ORN_MAJOR,
+                   ORN_MINOR, ORN_DOM7, ORN_MAJ7, ORN_MIN7, ORN_SUS2, ORN_SUS4)
 
-_ARP_ORN = {'maj': ORN_MAJOR, 'min': ORN_MINOR}
+_ARP_ORN = {'maj': ORN_MAJOR, 'min': ORN_MINOR, 'dom7': ORN_DOM7,
+            'maj7': ORN_MAJ7, 'min7': ORN_MIN7,
+            'sus2': ORN_SUS2, 'sus4': ORN_SUS4}
 
 
 def octave_short_lead(lead: list[Placed], short_thresh_rows: int) -> None:
@@ -63,12 +67,13 @@ def chord_arps(notes: list[Note], rows_per_beat: int, total_rows: int,
                transpose: int = 0, vol_fn=None) -> list[Placed]:
     """Build a single-channel arpeggio line from the source chords.
 
-    One Placed per onset that carries notes: a recognised major/minor triad
-    becomes its root note + the matching arp ornament (so the one channel cycles
-    root/third/fifth and implies the chord); anything else falls back to the
-    group's lowest note played plain, so the channel is never emptier than a
-    held bass line. `vol_fn` (optional) maps the group's peak velocity to an AY
-    volume for dynamics.
+    One Placed per onset that carries notes: a recognised chord (major/minor
+    triad, dominant/major/minor seventh, sus2/sus4) becomes its root note +
+    the matching arp ornament (so the one channel cycles the chord tones and
+    implies the harmony); anything else falls back to the group's lowest note
+    played plain, so the channel is never emptier than a held bass line.
+    `vol_fn` (optional) maps the group's peak velocity to an AY volume for
+    dynamics.
     """
     placed: list[Placed] = []
     # group by the row each onset quantises to, so humanised (slightly
@@ -79,9 +84,9 @@ def chord_arps(notes: list[Note], rows_per_beat: int, total_rows: int,
         if s >= total_rows:
             continue
         pitches = [n.pitch for n in group]
-        triad = identify_triad(pitches)
-        if triad is not None:
-            root_pc, quality = triad
+        chord = identify_chord(pitches)
+        if chord is not None:
+            root_pc, quality = chord
             root_pitch = min(p for p in pitches if p % 12 == root_pc)
             note_byte = midi_to_pt3_byte(root_pitch, transpose)
             ornament = _ARP_ORN[quality]

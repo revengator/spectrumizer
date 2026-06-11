@@ -64,9 +64,11 @@ spectrumizer song.mid -o song.pt3 --no-dynamics      # ...or flat per-channel vo
 spectrumizer song.mid --bass envelope        # pure buzzer — envelope is the oscillator (deep, coarse pitch)
 spectrumizer song.mid --bass envelope-tone   # tone keeps the pitch, envelope adds the buzz (any register)
 
-# chord arpeggios: channel C plays each chord's root and cycles a major/minor
-# ornament at 50 Hz — one channel implies the whole triad (the classic AY trick)
+# chord arpeggios: channel C plays each chord's root and cycles the matching
+# interval ornament — one channel implies the whole chord (the classic AY trick).
+# Recognises major/minor triads, dominant/major/minor sevenths and sus2/sus4.
 spectrumizer song.mid --arps
+spectrumizer song.mid --arps --arp-speed 2   # hold each tone 2 frames: audible ripple
 
 # echo: channel C repeats the lead half a beat later, quieter (the other classic)
 spectrumizer song.mid --echo
@@ -101,10 +103,12 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
     backbeat with closed hats on the off-eighths and an open hat closing each
     bar; chiptune style),
     **chord arpeggios** (`--arps`) — each source chord becomes its root note plus
-    a major/minor ornament cycling 0/+4/+7 (or 0/+3/+7) semitones at 50 Hz, so
-    one AY channel implies the full triad (`arrange/chords.py` recognises the
-    triads) — and **echo** (`--echo`) — the lead repeated half a beat later,
-    quieter, on channel C.
+    the matching interval ornament cycling at frame rate, so one AY channel
+    implies the full chord (`arrange/chords.py` recognises major/minor triads,
+    dominant/major/minor sevenths and sus2/sus4; `--arp-speed N` holds each
+    tone N frames, turning the 50 Hz blur into an audible ripple) — and
+    **echo** (`--echo`) — the lead repeated half a beat later, quieter, on
+    channel C.
   - dynamics — MIDI velocity → per-note AY volume, normalised so the piece's
     loudest note hits each channel's ceiling (on by default; `--no-dynamics`).
   - vibrato (`--vibrato`) — the lead's sustain wobbles the tone period (±3
@@ -187,15 +191,17 @@ Hear every mode in your browser on the **[demo page](https://revengator.github.i
 (GitHub Pages, nothing to install) — or click a clip to play it in GitHub's file
 viewer. All clips are the bundled public-domain examples rendered through the
 built-in software AY: `ode-to-joy.mid` for most, `pachelbel-canon.mid` where a
-low ground bass or chords shine (buzzer, arps), and `korobeiniki.mid` (the
-Tetris folk tune, with a real GM drum track) for the drums clip. Regenerate
-with `pip install -e ".[demos]" && python examples/make_demos.py`.
+low ground bass or chords shine (buzzer, arps), `korobeiniki.mid` (the Tetris
+folk tune, with a real GM drum track) for the drums clip, and `greensleeves.mid`
+(the traditional tune, harmonised with 7th/sus chords) for the arps-v2 clip.
+Regenerate with `pip install -e ".[demos]" && python examples/make_demos.py`.
 
 | Demo | What it shows |
 |---|---|
 | ▶ [Faithful](docs/audio/faithful.mp3) | 3-voice reduction |
 | ▶ [Chiptune](docs/audio/chiptune.mp3) | octave lead + synth drums (off-beat hi-hats included) |
 | ▶ [Chord arpeggios](docs/audio/arps.mp3) | triads faked on one channel via 50 Hz ornaments (`--arps`) |
+| ▶ [Seventh & sus arpeggios](docs/audio/arps7.mp3) | Greensleeves: Am7 / Fmaj7 / G7 / Esus4 — four-note chords from one channel |
 | ▶ [Echo](docs/audio/echo.mp3) | the lead repeated half a beat later, quieter (`--echo`) |
 | ▶ [Vibrato](docs/audio/vibrato.mp3) | delayed sub-semitone vibrato, encoded inside the sample (`--vibrato`) |
 | ▶ [Real drums + harmony](docs/audio/drums.mp3) | a GM drum track (kick/snare/hi-hats) and the chords time-sharing channel C |
@@ -204,7 +210,7 @@ with `pip install -e ".[demos]" && python examples/make_demos.py`.
 | ▶ [No dynamics](docs/audio/chiptune-flat.mp3) | flat volume — vs the velocity dynamics |
 | ▶ [Equal-tempered](docs/audio/chiptune-equal.mp3) | vs the exact PT3 tone table |
 | ▶ [Mono](docs/audio/chiptune-mono.mp3) | vs the default ABC stereo |
-| ▶ [Everything at once](docs/audio/combo.mp3) | the flags compose: octave lead + vibrato + buzzer bass + arps, an octave down |
+| ▶ [Everything at once](docs/audio/combo.mp3) | the flags compose: octave lead + vibrato + buzzer bass + rippling arps (`--arp-speed 2`), an octave down |
 
 Every demo also ships as an **executable 128K snapshot** in
 [`docs/audio/`](docs/audio/) (`<demo>.sna`, made with `spectrumizer-pack`) —
@@ -223,16 +229,16 @@ pytest -q
 
 - **Generate:** MIDI → PT3, faithful + chiptune, velocity-driven dynamics,
   **hi-hat percussion** (GM cymbals mapped, off-beat hats in the synth groove),
-  **chord arpeggios** (`--arps`), **echo** (`--echo`), **lead vibrato**
-  (`--vibrato`), and **buzzer bass** through the AY hardware envelope
-  (`--bass envelope` / `envelope-tone`).
+  **chord arpeggios** with the full triad/7th/sus vocabulary (`--arps`,
+  `--arp-speed`), **echo** (`--echo`), **lead vibrato** (`--vibrato`), and
+  **buzzer bass** through the AY hardware envelope (`--bass envelope` /
+  `envelope-tone`).
 - **Audition:** built-in software-AY playback to a stereo WAV — exact PT3 tone
   table, real per-frame noise period, ABC panning, and the AY **hardware
   envelope generator** (`spectrumizer-play` / `--play`).
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
 - **Planned:**
-  - **Arps v2** — 7th/sus ornaments, configurable arpeggio speed.
   - **Auto-transpose** — fit the piece's range to the AY instead of tuning by ear.
   - MusicXML (music21) input · PT3 slides/glissando in the audition player ·
     raw-AY register-dump export (`.psg` / `.vtx`).

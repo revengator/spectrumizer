@@ -225,6 +225,32 @@ def test_arps_put_chord_ornament_on_channel_c():
             assert decode_row_count(pt3[addr:]) == ROWS_PER_PATTERN
 
 
+def test_arps_recognise_sevenths_and_sus():
+    from spectrumizer.pt3 import ORN_MIN7, ORN_SUS4
+    notes = []
+    for beat in range(4):                         # Am7: A2 + A3 C4 E4 G4
+        for pitch in (45, 57, 60, 64, 67):
+            notes.append(Note(pitch=pitch, start=beat, dur=1))
+    for beat in range(4, 8):                      # Gsus4: G2 + G3 C4 D4
+        for pitch in (43, 55, 60, 62):
+            notes.append(Note(pitch=pitch, start=beat, dur=1))
+    pt3, _ = arrange(Song(notes=notes, tempo_bpm=120.0, name="SEV"), arps=True)
+    orns = _channel_c_ornaments(pt3)
+    assert ORN_MIN7 in orns and ORN_SUS4 in orns
+
+
+def test_arp_speed_stretches_the_arp_ornaments():
+    from spectrumizer.pt3 import ORN_MAJOR, ORN_OCTAVE
+    fast, sf = arrange(_triad_song(), arps=True)
+    slow, ss = arrange(_triad_song(), arps=True, arp_speed=3)
+    assert sf['arp_speed'] == 1 and ss['arp_speed'] == 3
+    assert parse_module(fast).ornaments[ORN_MAJOR].offsets == [0, 4, 7]
+    assert parse_module(slow).ornaments[ORN_MAJOR].offsets == \
+        [0, 0, 0, 4, 4, 4, 7, 7, 7]
+    # only the chord arps slow down — the octave ornament keeps its rate
+    assert parse_module(slow).ornaments[ORN_OCTAVE].offsets == [0, 12]
+
+
 def test_arps_off_keeps_plain_harmony():
     from spectrumizer.pt3 import ORN_EMPTY
     pt3, stats = arrange(_triad_song(), style='faithful', arps=False)

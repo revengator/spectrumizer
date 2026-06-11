@@ -45,10 +45,16 @@ def build_parser() -> argparse.ArgumentParser:
     cgroup = p.add_mutually_exclusive_group()
     cgroup.add_argument("--arps", action="store_true",
                         help="chord arpeggios on channel C: play each source "
-                             "chord's root and cycle a major/minor ornament at "
-                             "50 Hz to fake the full triad on one channel. "
+                             "chord's root and cycle the matching interval "
+                             "ornament (major/minor triads, sevenths, sus2/"
+                             "sus4) to fake the full chord on one channel. "
                              "Replaces the harmony / synth-drums voice (real "
                              "drums still win channel C).")
+    p.add_argument("--arp-speed", type=int, default=1, choices=range(1, 9),
+                   metavar="N",
+                   help="frames each arp chord tone holds (1-8). 1 (default) "
+                        "blurs into a chord at 50 Hz; higher values ripple "
+                        "audibly.")
     cgroup.add_argument("--echo", action="store_true",
                         help="echo on channel C: repeat the lead half a beat "
                              "later, quieter — the classic AY echo. Replaces "
@@ -89,8 +95,8 @@ def main(argv: list[str] | None = None) -> int:
         song, style=args.style, rows_per_beat=args.rows_per_beat,
         speed=args.speed, transpose=args.transpose,
         name=args.name, author=args.author, loop_pos=args.loop_pos,
-        dynamics=args.dynamics, bass=args.bass, arps=args.arps, echo=args.echo,
-        vibrato=args.vibrato)
+        dynamics=args.dynamics, bass=args.bass, arps=args.arps,
+        arp_speed=args.arp_speed, echo=args.echo, vibrato=args.vibrato)
 
     with open(out, "wb") as f:
         f.write(pt3)

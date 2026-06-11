@@ -22,7 +22,8 @@
 <h1>spectrumizer — demos</h1>
 <p class="sub">MIDI &rarr; ZX Spectrum AY (PT3). All clips are the bundled
 public-domain examples (<code>ode-to-joy</code>, <code>pachelbel-canon</code>,
-<code>korobeiniki</code>) rendered through spectrumizer's software AY. Each
+<code>korobeiniki</code>, <code>greensleeves</code>) rendered through
+spectrumizer's software AY. Each
 <code>.sna</code> is a self-playing 128K snapshot of the same module — load it
 in any Spectrum emulator to hear the real player.</p>
 <div class="demo">
@@ -42,6 +43,12 @@ in any Spectrum emulator to hear the real player.</p>
   <p>Pachelbel&#x27;s Canon with --arps: channel C plays each chord&#x27;s root and cycles a major/minor ornament at 50 Hz, so a single AY channel implies the whole triad — fake polyphony, the classic AY/Follin trick.</p>
   <audio controls preload="none" src="audio/arps.mp3"></audio>
   <p><code>spectrumizer pachelbel-canon.mid --arps</code> &middot; <a href="audio/arps.pt3">download .pt3</a> &middot; <a href="audio/arps.sna">.sna for an emulator</a></p>
+</div>
+<div class="demo">
+  <h2>Seventh &amp; sus arpeggios</h2>
+  <p>Greensleeves, harmonised with sevenths and suspensions: the chord detector reads Am7, Fmaj7, G7, Em7, Cmaj7 and the Esus4 cadences, and channel C cycles each chord&#x27;s full tones — four-note harmony from one AY channel.</p>
+  <audio controls preload="none" src="audio/arps7.mp3"></audio>
+  <p><code>spectrumizer greensleeves.mid --arps</code> &middot; <a href="audio/arps7.pt3">download .pt3</a> &middot; <a href="audio/arps7.sna">.sna for an emulator</a></p>
 </div>
 <div class="demo">
   <h2>Echo</h2>
@@ -93,9 +100,9 @@ in any Spectrum emulator to hear the real player.</p>
 </div>
 <div class="demo">
   <h2>Everything at once</h2>
-  <p>Pachelbel&#x27;s Canon with the flags combined: chiptune octave lead with vibrato on A, tone+envelope buzzer bass on B and chord arpeggios on C — the whole piece an octave down, at flat volume.</p>
+  <p>Pachelbel&#x27;s Canon with the flags combined: chiptune octave lead with vibrato on A, tone+envelope buzzer bass on B and chord arpeggios on C slowed to 2 frames per tone (--arp-speed 2, an audible ripple) — the whole piece an octave down, at flat volume.</p>
   <audio controls preload="none" src="audio/combo.mp3"></audio>
-  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone --arps --vibrato --transpose -12 --no-dynamics</code> &middot; <a href="audio/combo.pt3">download .pt3</a> &middot; <a href="audio/combo.sna">.sna for an emulator</a></p>
+  <p><code>spectrumizer pachelbel-canon.mid --style chiptune --bass envelope-tone --arps --arp-speed 2 --vibrato --transpose -12 --no-dynamics</code> &middot; <a href="audio/combo.pt3">download .pt3</a> &middot; <a href="audio/combo.sna">.sna for an emulator</a></p>
 </div>
 
 <footer>Regenerate with <code>python examples/make_demos.py</code>.
