@@ -10,4 +10,4 @@ bundle into a game. See LICENSING.md.
 from .ir import Song, Note
 
 __all__ = ["Song", "Note"]
-__version__ = "0.2.1"
+__version__ = "0.2.2"
