@@ -20,6 +20,7 @@ the tick's word at bytes 2-3 is popped into HL and ADDed to the tone period).
 from __future__ import annotations
 
 # AY noise periods (R6, 0..31) for the drums: lower = brighter/hissier.
+HAT_NOISE = 1        # near the maximum — thin metallic sizzle
 SNARE_NOISE = 6      # bright hiss with some body
 KICK_NOISE = 20      # dark, thuddy
 
@@ -100,6 +101,21 @@ def build_kick() -> bytes:
     return _sample_raw(ticks, loop=7)
 
 
+def build_hat() -> bytes:
+    """Closed hi-hat: a tick of thin near-maximum-brightness noise, gone almost
+    immediately (loops silent). Shorter and softer than the snare so off-beat
+    hats tick behind the backbeat instead of competing with it."""
+    amps = [0xC, 0x7, 0x2, 0x0]
+    return _sample_raw([(0x10 | a, HAT_NOISE) for a in amps], loop=3)
+
+
+def build_hat_open() -> bytes:
+    """Open hi-hat: the same thin noise with a long sizzling decay tail (loops
+    silent), so the hit rings on until the next drum cuts it."""
+    amps = [0xD, 0xB, 0x9, 0x8, 0x6, 0x5, 0x4, 0x3, 0x2, 0x1, 0x0, 0x0]
+    return _sample_raw([(0x10 | a, HAT_NOISE) for a in amps], loop=11)
+
+
 def build_buzzer() -> bytes:
     """Pure buzzer bass: tone AND noise disabled (0x90), so the channel is heard
     purely through the AY hardware envelope — the envelope IS the oscillator.
@@ -121,7 +137,7 @@ def build_buzzer_tone() -> bytes:
 
 # Canonical sample slot assignment used by the arranger / writer.
 (S_LEAD, S_BASS, S_HARMONY, S_SNARE, S_KICK,
- S_BUZZER, S_BUZZER_TONE, S_LEAD_VIB) = 1, 2, 3, 4, 5, 6, 7, 8
+ S_BUZZER, S_BUZZER_TONE, S_LEAD_VIB, S_HAT, S_HAT_OPEN) = range(1, 11)
 
 DEFAULT_SAMPLES: dict[int, bytes] = {
     S_LEAD: build_lead(),
@@ -132,4 +148,6 @@ DEFAULT_SAMPLES: dict[int, bytes] = {
     S_BUZZER: build_buzzer(),
     S_BUZZER_TONE: build_buzzer_tone(),
     S_LEAD_VIB: build_lead_vibrato(),
+    S_HAT: build_hat(),
+    S_HAT_OPEN: build_hat_open(),
 }

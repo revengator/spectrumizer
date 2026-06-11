@@ -87,6 +87,49 @@ def test_drums_multiplex_harmony_on_channel_c():
             assert decode_row_count(pt3[addr:]) == ROWS_PER_PATTERN
 
 
+def test_gm_cymbals_map_to_hat_samples():
+    from spectrumizer.pt3 import S_KICK, S_SNARE, S_HAT, S_HAT_OPEN
+    song = _chord_song()
+    # one GM key per beat: kick, snare, closed hat, open hat (twice around)
+    keys = [36, 38, 42, 46]
+    song.drums = [Note(pitch=keys[b % 4], start=b, dur=0.25) for b in range(8)]
+    pt3, _ = arrange(song, style='faithful', dynamics=False)
+    onsets = {r: ev for r, ev in enumerate(parse_module(pt3).patterns[0][2])
+              if ev is not None and ev.note is not None}
+    expected = [(S_KICK, 13), (S_SNARE, 13), (S_HAT, 10), (S_HAT_OPEN, 11)]
+    for b in range(8):
+        sample, ceil = expected[b % 4]
+        # cymbals run quieter than the kick/snare even with dynamics off
+        assert onsets[b * 4].sample == sample and onsets[b * 4].vol == ceil
+
+
+def test_simultaneous_drum_hits_collapse_by_rank():
+    from spectrumizer.pt3 import S_KICK
+    song = _chord_song()
+    # a closed hat, a kick and an open hat all on the same tick: kick wins
+    song.drums = [Note(pitch=p, start=0, dur=0.25) for p in (42, 36, 46)]
+    pt3, _ = arrange(song, style='faithful', dynamics=False)
+    onsets = [ev for ev in parse_module(pt3).patterns[0][2]
+              if ev is not None and ev.note is not None]
+    assert onsets[0].sample == S_KICK
+
+
+def test_synth_drums_add_offbeat_hats():
+    from spectrumizer.pt3 import S_KICK, S_SNARE, S_HAT, S_HAT_OPEN
+    pt3, stats = arrange(_chord_song(), style='chiptune')
+    assert stats['voices']['channel_c'] == 'synth-drums'
+    onsets = {r: ev for r, ev in enumerate(parse_module(pt3).patterns[0][2])
+              if ev is not None and ev.note is not None}
+    # one bar at rpb=4: kick/snare on the beats, hats on the off-eighths,
+    # the bar's last hat open — and the hats quieter than the backbeat
+    bar = [(0, S_KICK), (2, S_HAT), (4, S_SNARE), (6, S_HAT),
+           (8, S_KICK), (10, S_HAT), (12, S_SNARE), (14, S_HAT_OPEN)]
+    for row, sample in bar:
+        assert onsets[row].sample == sample
+        assert onsets[row].vol == (13 if sample in (S_KICK, S_SNARE) else
+                                   10 if sample == S_HAT_OPEN else 9)
+
+
 def test_valid_pt3_header():
     pt3, _ = arrange(_chord_song(), style='faithful')
     assert pt3[0x00:0x0D] == b'ProTracker 3.'

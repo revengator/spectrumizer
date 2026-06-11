@@ -10,7 +10,7 @@ from .encode import (
 )
 from .samples import (
     DEFAULT_SAMPLES, S_LEAD, S_BASS, S_HARMONY, S_SNARE, S_KICK,
-    S_BUZZER, S_BUZZER_TONE, S_LEAD_VIB,
+    S_BUZZER, S_BUZZER_TONE, S_LEAD_VIB, S_HAT, S_HAT_OPEN,
 )
 from .ornaments import (
     DEFAULT_ORNAMENTS, ORN_EMPTY, ORN_OCTAVE, ORN_MAJOR, ORN_MINOR,
@@ -22,7 +22,7 @@ __all__ = [
     "midi_to_pt3_byte", "encode_channel", "decode_row_count",
     "envelope_steps", "envelope_period_for",
     "DEFAULT_SAMPLES", "S_LEAD", "S_BASS", "S_HARMONY", "S_SNARE", "S_KICK",
-    "S_BUZZER", "S_BUZZER_TONE", "S_LEAD_VIB",
+    "S_BUZZER", "S_BUZZER_TONE", "S_LEAD_VIB", "S_HAT", "S_HAT_OPEN",
     "DEFAULT_ORNAMENTS", "ORN_EMPTY", "ORN_OCTAVE", "ORN_MAJOR", "ORN_MINOR",
     "build_pt3", "HEADER_SIZE",
 ]

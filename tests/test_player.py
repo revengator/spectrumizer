@@ -94,6 +94,18 @@ def test_drum_samples_encode_their_noise_period():
     assert not kick.ticks[2][3]        # tone-only ticks keep byte0 = 0 (env slide!)
 
 
+def test_hat_samples_are_bright_noise_bursts():
+    from spectrumizer.pt3.player import parse_sample
+    from spectrumizer.pt3 import samples as smp
+    closed = parse_sample(smp.build_hat(), 0)
+    opened = parse_sample(smp.build_hat_open(), 0)
+    for hat in (closed, opened):
+        # noise-only at the near-maximum brightness, decaying to a silent loop
+        assert all(t[3] and t[4] == smp.HAT_NOISE and not t[0] for t in hat.ticks)
+        assert hat.ticks[-1][2] == 0 and hat.loop == len(hat.ticks) - 1
+    assert len(opened.ticks) > 2 * len(closed.ticks)   # the open hat rings on
+
+
 def test_drum_samples_drive_the_noise_period():
     from spectrumizer.pt3 import S_SNARE, S_KICK
     from spectrumizer.pt3.samples import SNARE_NOISE, KICK_NOISE

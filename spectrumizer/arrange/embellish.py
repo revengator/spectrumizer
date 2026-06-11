@@ -3,8 +3,9 @@
 Passes:
   * octave_short_lead — octave-double SHORT lead notes (the classic AY brightener;
     held notes stay single-voice so they don't warble).
-  * synth_drums       — a backbeat (kick on beats 1&3, snare on 2&4) when the
-    source has no drum track, so chiptune output still has percussive drive.
+  * synth_drums       — a backbeat (kick on beats 1&3, snare on 2&4, closed
+    hats on the off-eighths, an open hat closing each bar) when the source has
+    no drum track, so chiptune output still has percussive drive.
   * chord_arps        — fake polyphony on one channel: play each chord's root and
     cycle a major/minor ornament (root, +third, +fifth) at 50 Hz, so a single AY
     channel implies the whole triad (the classic AY/Follin trick).
@@ -34,18 +35,27 @@ def octave_short_lead(lead: list[Placed], short_thresh_rows: int) -> None:
 
 
 def synth_drums(total_rows: int, rows_per_beat: int, drum_byte: int,
-                snare_sample: int, kick_sample: int) -> list[Placed]:
-    """A simple 4/4 backbeat occupying one channel (drums = noise, tone off)."""
+                snare_sample: int, kick_sample: int,
+                hat_sample: int | None = None,
+                hat_open_sample: int | None = None) -> list[Placed]:
+    """A 4/4 backbeat occupying one channel (drums = noise, tone off): kick on
+    beats 1 & 3, snare on 2 & 4 and — given the hat samples and a grid fine
+    enough for them — a quieter closed hat on every off-eighth, the bar's last
+    one opened so it sizzles into the next bar. Every event states its volume:
+    the encoder only re-emits it on change, and the hats run quieter."""
     placed: list[Placed] = []
-    n_beats = total_rows // rows_per_beat
-    for b in range(n_beats):
+    half = rows_per_beat // 2
+    for b in range(total_rows // rows_per_beat):
         row = b * rows_per_beat
-        if row >= total_rows:
-            break
-        if b % 4 in (0, 2):
-            placed.append(Placed(row, row + 1, drum_byte, {'sample': kick_sample}))
-        else:
-            placed.append(Placed(row, row + 1, drum_byte, {'sample': snare_sample}))
+        sample = kick_sample if b % 4 in (0, 2) else snare_sample
+        placed.append(Placed(row, row + 1, drum_byte,
+                             {'sample': sample, 'vol': 13}))
+        if hat_sample is None or not half or row + half >= total_rows:
+            continue
+        bar_end = b % 4 == 3 and hat_open_sample is not None
+        placed.append(Placed(row + half, row + half + 1, drum_byte,
+                             {'sample': hat_open_sample if bar_end else hat_sample,
+                              'vol': 10 if bar_end else 9}))
     return placed
 
 

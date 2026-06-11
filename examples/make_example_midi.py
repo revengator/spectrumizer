@@ -79,7 +79,7 @@ CANON_MELODY = CANON_V1 + CANON_V2 + CANON_V3
 # --- Korobeiniki (Russian folk song, 1861; public domain) ---------------------
 # The tune Tetris made famous, in A minor: 8 bars of 4/4 (32 beats). Chords:
 # Am Am E Am | Dm Am E Am. Four voices: melody (ch0), an octave-pumping bass
-# (ch1), a held chord line (ch2) and a kick/snare backbeat on the GM drum
+# (ch1), a held chord line (ch2) and a kick/snare/hi-hat groove on the GM drum
 # channel (ch9) — the drum track is what showcases the channel-C time-share.
 A5K, G5K, F5K, E5K, D5K, C5K, B4K, A4K = 81, 79, 77, 76, 74, 72, 71, 69
 KORO_MELODY = [
@@ -105,10 +105,13 @@ _KORO_CHORD = {'Am': ((60, 2), (64, 2)),                # C4, E4
 KORO_HARMONY = [ev for ch in ('Am', 'Am', 'E', 'Am', 'Dm', 'Am', 'E', 'Am')
                 for ev in _KORO_CHORD[ch]]
 
-# Drums (GM ch10): kick 36 on beats 1 & 3, snare 38 on 2 & 4, snare fill at the end.
-_KORO_BAR = [(36, .25), (None, .75), (38, .25), (None, .75),
-             (36, .25), (None, .75), (38, .25), (None, .75)]
-_KORO_FILL = _KORO_BAR[:7] + [(None, .25), (38, .25), (None, .25)]
+# Drums (GM ch10): kick 36 on beats 1 & 3, snare 38 on 2 & 4, closed hi-hat 42
+# on every off-eighth with an open hat 46 closing the bar, snare fill at the end.
+_KORO_BAR = [(36, .25), (None, .25), (42, .25), (None, .25),
+             (38, .25), (None, .25), (42, .25), (None, .25),
+             (36, .25), (None, .25), (42, .25), (None, .25),
+             (38, .25), (None, .25), (46, .25), (None, .25)]
+_KORO_FILL = _KORO_BAR[:13] + [(None, .25), (38, .25), (None, .25)]
 KORO_DRUMS = _KORO_BAR * 7 + _KORO_FILL
 
 

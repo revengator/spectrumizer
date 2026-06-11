@@ -49,7 +49,8 @@ Silicon — no native build step.
 # faithful 3-voice reduction
 spectrumizer song.mid -o song.pt3                 # or: python -m spectrumizer song.mid -o song.pt3
 
-# chiptune flavour: octave-doubled leads + synth drums when the source has none
+# chiptune flavour: octave-doubled leads + a kick/snare/hi-hat groove when the
+# source has no drum track
 spectrumizer song.mid -o song.pt3 --style chiptune
 
 # tune the AY octave by ear, change grid/tempo
@@ -96,7 +97,9 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
   - `quantize` — map time to PT3's row grid (derive `speed` from tempo).
   - `reduce` — peel the source polyphony into ≤3 monophonic lines (lead / bass /
     harmony) via a greedy high/low "skyline".
-  - `embellish` — extra voices: octave leads + synth drums (chiptune style),
+  - `embellish` — extra voices: octave leads + synth drums (a kick/snare
+    backbeat with closed hats on the off-eighths and an open hat closing each
+    bar; chiptune style),
     **chord arpeggios** (`--arps`) — each source chord becomes its root note plus
     a major/minor ornament cycling 0/+4/+7 (or 0/+3/+7) semitones at 50 Hz, so
     one AY channel implies the full triad (`arrange/chords.py` recognises the
@@ -115,7 +118,10 @@ MIDI ─(inputs/midi.py, mido)→ IR ─(arrange/)→ 3 AY channels ─(pt3/)→
   - Channel allocation: **A = lead, B = bass, C =** real drums if present
     (the harmony fills the rows between hits — drums and chords time-share the
     channel), else chord arps (`--arps`), else echo (`--echo`), else synth
-    drums (chiptune), else harmony (faithful).
+    drums (chiptune), else harmony (faithful). GM kits map to the AY noise
+    drums: kick, snare, and hi-hats — closed/pedal hats and rides tick short
+    and quiet, open hats and crashes ring a sizzling tail; simultaneous hits
+    collapse to the strongest (kick > snare > cymbals).
   - pattern dedup — identical 64-row patterns are stored once and replayed
     through the PT3 position list (repeats cost 1 byte, not a pattern).
 - **`spectrumizer/ir.py`** — the source-agnostic note model both inputs target.
@@ -188,11 +194,11 @@ with `pip install -e ".[demos]" && python examples/make_demos.py`.
 | Demo | What it shows |
 |---|---|
 | ▶ [Faithful](docs/audio/faithful.mp3) | 3-voice reduction |
-| ▶ [Chiptune](docs/audio/chiptune.mp3) | octave lead + synth drums |
+| ▶ [Chiptune](docs/audio/chiptune.mp3) | octave lead + synth drums (off-beat hi-hats included) |
 | ▶ [Chord arpeggios](docs/audio/arps.mp3) | triads faked on one channel via 50 Hz ornaments (`--arps`) |
 | ▶ [Echo](docs/audio/echo.mp3) | the lead repeated half a beat later, quieter (`--echo`) |
 | ▶ [Vibrato](docs/audio/vibrato.mp3) | delayed sub-semitone vibrato, encoded inside the sample (`--vibrato`) |
-| ▶ [Real drums + harmony](docs/audio/drums.mp3) | a GM drum track and the chords time-sharing channel C |
+| ▶ [Real drums + harmony](docs/audio/drums.mp3) | a GM drum track (kick/snare/hi-hats) and the chords time-sharing channel C |
 | ▶ [Buzzer (pure)](docs/audio/buzzer.mp3) | bass = the AY hardware envelope, tone off (`--bass envelope`) |
 | ▶ [Buzzer (tone+env)](docs/audio/buzzer-tone.mp3) | envelope buzz, tone keeps the pitch (`--bass envelope-tone`) |
 | ▶ [No dynamics](docs/audio/chiptune-flat.mp3) | flat volume — vs the velocity dynamics |
@@ -216,6 +222,7 @@ pytest -q
 ## Status
 
 - **Generate:** MIDI → PT3, faithful + chiptune, velocity-driven dynamics,
+  **hi-hat percussion** (GM cymbals mapped, off-beat hats in the synth groove),
   **chord arpeggios** (`--arps`), **echo** (`--echo`), **lead vibrato**
   (`--vibrato`), and **buzzer bass** through the AY hardware envelope
   (`--bass envelope` / `envelope-tone`).
@@ -225,8 +232,6 @@ pytest -q
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
 - **Planned:**
-  - **Richer percussion** — hi-hats (GM 42/44/46) and synth-drum pattern
-    variety beyond the fixed 4/4 backbeat.
   - **Arps v2** — 7th/sus ornaments, configurable arpeggio speed.
   - **Auto-transpose** — fit the piece's range to the AY instead of tuning by ear.
   - MusicXML (music21) input · PT3 slides/glissando in the audition player ·

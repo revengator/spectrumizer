@@ -43,7 +43,8 @@ DEMOS = [
      "spectrumizer ode-to-joy.mid -o faithful.pt3",
      dict(style="faithful"), dict()),
     ("chiptune", "Chiptune",
-     "Octave-doubled lead + synth drums — the default chiptune flavour.",
+     "Octave-doubled lead + a kick/snare synth groove with off-beat hi-hats — "
+     "the default chiptune flavour.",
      "spectrumizer ode-to-joy.mid -o chiptune.pt3 --style chiptune",
      dict(style="chiptune"), dict()),
     ("arps", "Chord arpeggios",
@@ -65,9 +66,10 @@ DEMOS = [
      dict(vibrato=True), dict()),
     ("drums", "Real drums + harmony",
      "Korobeiniki — the public-domain Russian folk song behind Tetris — with a "
-     "real GM drum track. Drums win channel C, but the chord voice fills the "
-     "rows between hits and re-attacks after each one, so the percussion costs "
-     "almost no harmony.",
+     "real GM drum track: kick, snare and hi-hats (closed ticking the "
+     "off-eighths, open closing each bar). Drums win channel C, but the chord "
+     "voice fills the rows between hits and re-attacks after each one, so the "
+     "percussion costs almost no harmony.",
      "spectrumizer korobeiniki.mid --style chiptune",
      dict(style="chiptune"), dict(), KORO),
     ("buzzer", "Buzzer bass (pure envelope)",

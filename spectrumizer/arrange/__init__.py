@@ -18,7 +18,7 @@ from ..pt3 import (
     midi_to_pt3_byte, NOTE_TO_BYTE, build_pt3,
     DEFAULT_SAMPLES, DEFAULT_ORNAMENTS,
     S_LEAD, S_BASS, S_HARMONY, S_SNARE, S_KICK, S_BUZZER, S_BUZZER_TONE,
-    S_LEAD_VIB, ORN_EMPTY, envelope_period_for,
+    S_LEAD_VIB, S_HAT, S_HAT_OPEN, ORN_EMPTY, envelope_period_for,
 )
 from .model import Placed, rasterize, pack_patterns, ROWS_PER_PATTERN
 from .quantize import plan_grid, note_rows
@@ -26,9 +26,17 @@ from .reduce import assign_voices
 from .embellish import (octave_short_lead, synth_drums, chord_arps, echo_lead,
                         multiplex_drums_harmony)
 
-# GM percussion keys we treat as a kick (everything else on ch10 -> snare).
+# GM percussion mapping: kicks and snares carry the groove at the full drum
+# level; cymbals tick behind them, quieter (closed hats lowest). Anything on
+# ch10 we don't recognise is a snare-ish hit.
 GM_KICK_KEYS = {35, 36}
+GM_HAT_KEYS = {42, 44, 51, 53, 59}        # closed/pedal hi-hat + ride family
+GM_HAT_OPEN_KEYS = {46, 49, 52, 55, 57}   # open hi-hat + crash family
 DRUM_NOTE_BYTE = NOTE_TO_BYTE['C-4']     # dummy pitch; drum samples mute tone
+
+# Simultaneous GM hits collapse to one per row (the AY gives the drums a single
+# voice): the groove carriers outrank the cymbals.
+_DRUM_RANK = {S_KICK: 3, S_SNARE: 2, S_HAT_OPEN: 1, S_HAT: 0}
 
 # Default AY envelope shape for buzzer bass: 10 = \/\/ repeating triangle.
 BUZZER_SHAPE = 10
@@ -61,19 +69,35 @@ def _line_to_placed(line: list[Note], rows_per_beat: int, total_rows: int,
     return out
 
 
+def _gm_drum(pitch: int) -> tuple[int, int]:
+    """GM percussion key -> (sample, AY volume ceiling)."""
+    if pitch in GM_KICK_KEYS or pitch <= 36:
+        return S_KICK, 13
+    if pitch in GM_HAT_KEYS:
+        return S_HAT, 10
+    if pitch in GM_HAT_OPEN_KEYS:
+        return S_HAT_OPEN, 11
+    return S_SNARE, 13
+
+
 def _drums_to_placed(drums: list[Note], rows_per_beat: int, total_rows: int,
-                     ceil_vol: int = 13, vmax: int = 0) -> list[Placed]:
-    out: list[Placed] = []
+                     vmax: int = 0) -> list[Placed]:
+    """GM drum notes -> one-row hits, each stating its own sample and volume
+    (the channel is shared, so the encoder must see every change). Hits that
+    quantise to the same row collapse to the highest-ranked one."""
+    by_row: dict[int, Placed] = {}
     for n in drums:
         s, _ = note_rows(n.start, n.end, rows_per_beat, total_rows)
         if s >= total_rows:
             continue
-        sample = S_KICK if (n.pitch in GM_KICK_KEYS or n.pitch <= 36) else S_SNARE
-        opts = {'sample': sample}
-        if vmax > 0:
-            opts['vol'] = vol_from_velocity(n.velocity, ceil_vol, vmax)
-        out.append(Placed(s, s + 1, DRUM_NOTE_BYTE, opts))
-    return out
+        sample, ceil = _gm_drum(n.pitch)
+        cur = by_row.get(s)
+        if cur is not None and _DRUM_RANK[cur.opts['sample']] >= _DRUM_RANK[sample]:
+            continue
+        by_row[s] = Placed(s, s + 1, DRUM_NOTE_BYTE,
+                           {'sample': sample,
+                            'vol': vol_from_velocity(n.velocity, ceil, vmax)})
+    return [by_row[r] for r in sorted(by_row)]
 
 
 def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
@@ -131,13 +155,11 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
 
     if song.has_drums:
         dmax = max((n.velocity for n in song.drums), default=0) if dynamics else 0
-        drums_p = _drums_to_placed(song.drums, rows_per_beat, total_rows, 13, dmax)
+        drums_p = _drums_to_placed(song.drums, rows_per_beat, total_rows, dmax)
         harm_p = _line_to_placed(harmony, rows_per_beat, total_rows, transpose,
                                  10, vmax)
         # both voices share the channel, so every event states its own timbre
         # and volume (the encoder only emits tokens on change)
-        for p in drums_p:
-            p.opts.setdefault('vol', 13)
         for p in harm_p:
             p.opts['sample'] = S_HARMONY
             p.opts.setdefault('vol', 10)
@@ -152,7 +174,8 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         c_p = []                        # built below, after the lead embellishment
         c_sample, c_vol, c_kind = lead_sample, 8, 'echo'
     elif style == 'chiptune':
-        c_p = synth_drums(total_rows, rows_per_beat, DRUM_NOTE_BYTE, S_SNARE, S_KICK)
+        c_p = synth_drums(total_rows, rows_per_beat, DRUM_NOTE_BYTE,
+                          S_SNARE, S_KICK, S_HAT, S_HAT_OPEN)
         c_sample, c_vol, c_kind = S_SNARE, 13, 'synth-drums'
     else:
         c_p = _line_to_placed(harmony, rows_per_beat, total_rows, transpose, 10, vmax)
