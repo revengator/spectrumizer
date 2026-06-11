@@ -32,6 +32,7 @@ demos = ["lameenc>=1.5"]      # MP3 encoder for examples/make_demos.py (pip whee
 spectrumizer = "spectrumizer.cli:main"
 spectrumizer-play = "spectrumizer.play:main"
 spectrumizer-pack = "spectrumizer.pack:main"
+spectrumizer-export = "spectrumizer.export:main"
 
 [project.urls]
 Homepage = "https://github.com/revengator/spectrumizer"

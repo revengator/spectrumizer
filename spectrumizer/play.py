@@ -53,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"spectrumizer-play: input not found: {args.input}", file=sys.stderr)
         return 2
 
-    from .pt3.player import parse_module
+    from .pt3.player import parse_module, foreign_warnings
     from . import audio
 
     with open(args.input, "rb") as f:
@@ -66,16 +66,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # The audition path decodes the subset spectrumizer emits; be upfront when
     # a foreign module (full Vortex Tracker output) steps outside it.
-    if module.unknown_tokens:
-        toks = " ".join(f"0x{t:02X}" for t in sorted(module.unknown_tokens))
-        print("spectrumizer-play: warning: module uses PT3 tokens outside the "
-              f"audition subset ({toks}); they are skipped, so effects "
-              "(slides, noise commands…) are lost and decoding may desync.",
-              file=sys.stderr)
-    if module.tone_table != 1:
-        print("spectrumizer-play: warning: module asks for tone table "
-              f"{module.tone_table}; the audition synth renders table 1, so "
-              "absolute pitch may differ.", file=sys.stderr)
+    for w in foreign_warnings(module):
+        print(f"spectrumizer-play: warning: {w}", file=sys.stderr)
 
     out = args.output or (os.path.splitext(args.input)[0] + ".wav")
     pcm, channels = audio.render_pcm(

@@ -268,6 +268,22 @@ def parse_module(data: bytes) -> Module:
                   name, author, tone_table, frozenset(unknown))
 
 
+def foreign_warnings(module: Module) -> list[str]:
+    """Human-readable warnings when a module steps outside the subset this
+    decoder understands (shared by the audition and export CLIs)."""
+    out = []
+    if module.unknown_tokens:
+        toks = " ".join(f"0x{t:02X}" for t in sorted(module.unknown_tokens))
+        out.append("module uses PT3 tokens outside the decoded subset "
+                   f"({toks}); they are skipped, so effects (slides, noise "
+                   "commands…) are lost and decoding may desync.")
+    if module.tone_table != 1:
+        out.append(f"module asks for tone table {module.tone_table}; "
+                   "spectrumizer assumes table 1, so absolute pitch may "
+                   "differ.")
+    return out
+
+
 @dataclass
 class _Chan:
     note: int | None = None      # base PT3 note byte

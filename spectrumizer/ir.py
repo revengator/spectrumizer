@@ -1,8 +1,8 @@
 """Intermediate representation: the source-agnostic model the arranger consumes.
 
 Times are in BEATS (quarter-note units), not ticks or seconds, so input
-adapters (MIDI now; MusicXML later) can normalise resolution independently and
-the arranger never has to care where the notes came from.
+adapters can normalise resolution independently and the arranger never has to
+care where the notes came from.
 """
 
 from __future__ import annotations

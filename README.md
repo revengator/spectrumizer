@@ -6,10 +6,10 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Live demos](https://img.shields.io/badge/%E2%96%B6-live%20demos-brightgreen.svg)](https://revengator.github.io/spectrumizer/)
 
-Generate **ZX Spectrum AY music (`.pt3`)** from public sources (MIDI now;
-MusicXML/scores planned). The output is a standard Vortex Tracker / Sergey
-Bulba PT3 module, so anything it produces drops straight into a Spectrum game
-that ships a PT3 replayer.
+Generate **ZX Spectrum AY music (`.pt3`)** from MIDI — and get the notes back
+**out of a `.pt3` into MIDI** too. The output is a standard Vortex Tracker /
+Sergey Bulba PT3 module, so anything it produces drops straight into a Spectrum
+game that ships a PT3 replayer.
 
 Instead of typing every arrangement note-by-note in Python, you feed a source
 file and spectrumizer arranges it down to the AY's 3 channels (+ noise).
@@ -25,7 +25,7 @@ file and spectrumizer arranges it down to the AY's 3 channels (+ noise).
 ## Install
 
 ```bash
-pip install spectrumizer    # from PyPI — installs spectrumizer / spectrumizer-play / spectrumizer-pack
+pip install spectrumizer    # from PyPI — installs spectrumizer / spectrumizer-play / spectrumizer-pack / spectrumizer-export
 ```
 
 The `spectrumizer` and `spectrumizer-play` commands are pure-Python.
@@ -196,6 +196,34 @@ While it plays, the program shows a small title screen — a colour-cycling
 *spectrumizer* logo plus the module's **title and author**, read straight from
 the PT3 header, with the ROM font on black.
 
+## Get the notes back out (PT3 → MIDI)
+
+The pipeline also runs in reverse: `spectrumizer-export` decodes a `.pt3` (with
+the same interpreter the audition uses) and writes a standard MIDI file — to
+study a module, edit it in a DAW, or re-spectrumize it after changes.
+
+```bash
+spectrumizer-export song.pt3              # → song.mid
+spectrumizer-export song.pt3 --no-merge   # keep pattern-boundary re-attacks
+```
+
+What you get: channels **A/B/C as three tracks** at the module's effective
+tempo, velocities from the AY volumes, percussive samples (one-shot noise
+bursts) as **GM drums** — kick / snare / closed / open hat by noise colour —
+and chord-arp ornaments **expanded back into the chords they fake** (an `--arps`
+module exports real Am7 stacks, not a lone root). Notes the encoder re-attacked
+at pattern boundaries are merged back into one held note — at the PT3 level a
+re-attack and a genuinely repeated note are the same bytes there, so a repeated
+note landing exactly on a boundary merges too; `--no-merge` keeps every attack.
+
+What you don't: timbre. Samples, buzzer bass and noise periods have no MIDI
+analogue, and a spectrumizer-made module returns the **3-channel arrangement**,
+not your original source (the reduction is lossy by design; echo and octave
+embellishments export as the notes they play). Foreign modules audition-grade
+only: tokens outside the decoded subset are skipped with a warning. And the
+usual reminder: exporting somebody's module to MIDI does **not** clear its
+licence.
+
 ## Demos
 
 Hear every mode in your browser on the **[demo page](https://revengator.github.io/spectrumizer/)**
@@ -250,9 +278,10 @@ pytest -q
   envelope generator** (`spectrumizer-play` / `--play`).
 - **Package:** wrap a `.pt3` (+ Bulba's replayer) into a self-playing `.tap` /
   128K `.sna` for an emulator or real hardware (`spectrumizer-pack`).
-- **Planned:**
-  - MusicXML (music21) input · PT3 slides/glissando in the audition player ·
-    raw-AY register-dump export (`.psg` / `.vtx`).
+- **Export:** PT3 → MIDI — the reverse pipeline: decode a module back into
+  notes and take them to a DAW (`spectrumizer-export`).
+
+The feature set is complete — the project is maintained, not growing.
 
 ## Origin
 
