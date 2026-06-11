@@ -278,3 +278,48 @@ def test_vibrato_wobbles_the_tone_period():
     assert offs[:8] == [0] * 8                    # delayed: the attack is steady
     assert offs[8:16] == [0, 2, 3, 2, 0, -2, -3, -2]   # one triangle cycle
     assert offs[16:24] == offs[8:16]              # ... that loops
+
+
+def test_volume_zero_or_overflow_is_rejected():
+    # 0xC0|0 IS the OFF token (and 16+ would wrap back into it): vol is 1..15,
+    # silence is an OFF cell, never a volume.
+    with pytest.raises(ValueError):
+        encode_channel(_cells({0: ('C-4', {'vol': 0})}))
+    with pytest.raises(ValueError):
+        encode_channel(_cells({0: ('C-4', {'vol': 16})}))
+    with pytest.raises(ValueError):
+        encode_channel(_cells({0: 'C-4'}), default_volume=0)
+
+
+def test_foreign_modules_are_flagged_not_silent():
+    # a hand-built channel with a token spectrumizer never emits (0x05, a
+    # Vortex pattern command): the parser reports it instead of just skipping
+    foreign = bytes([0xC5, 0xB1, 0x40, 0x05, 0x50, 0x00])  # vol, skip 64, ?, C-1
+    pt3 = build_pt3([(foreign, foreign, foreign)], dict(DEFAULT_SAMPLES),
+                    dict(DEFAULT_ORNAMENTS), name="FOREIGN", tone_table=2)
+    module = parse_module(pt3)
+    assert module.unknown_tokens == frozenset({0x05})
+    assert module.tone_table == 2
+    # ... and a spectrumizer-generated module is clean
+    own = parse_module(_make_module())
+    assert own.unknown_tokens == frozenset()
+    assert own.tone_table == 1
+
+
+def test_vortex_tracker_signature_is_accepted():
+    # Vortex Tracker writes the same fixed-offset header under its own banner
+    # (both are exactly 30 bytes; the real player never reads the text)
+    pt3 = bytearray(_make_module(speed=6))
+    pt3[:30] = b'Vortex Tracker II 1.0 module: '
+    module = parse_module(bytes(pt3))
+    assert module.speed == 6 and module.order == [0]
+    with pytest.raises(ValueError):
+        parse_module(b'not a module' + bytes(300))
+
+
+def test_truncated_modules_never_crash_the_parser():
+    # foreign/corrupt modules may cut samples, ornaments, operands or the
+    # pattern table short: the parser clamps to EOF instead of IndexError-ing
+    pt3 = _make_module()
+    for cut in range(0xC9, len(pt3)):
+        parse_module(pt3[:cut])

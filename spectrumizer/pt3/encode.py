@@ -78,17 +78,28 @@ def envelope_period_for(tone_period: int, shape: int) -> int:
     return max(1, round(tone_period / (16 * envelope_steps(shape))))
 
 
+def _check_volume(vol: int) -> int:
+    """PT3 has no volume-0 token: 0xC0 | 0 IS the OFF (note cut) token, and
+    values past 15 would silently wrap into it. Silence is OFF, not vol 0."""
+    if not 1 <= vol <= 15:
+        raise ValueError(
+            f"PT3 volume must be 1..15 (got {vol}): 0xC0|0 aliases the OFF "
+            "token — encode silence as an OFF cell instead.")
+    return vol
+
+
 def encode_channel(rows: list, default_sample: int = 1,
                    default_volume: int = 15, ornament: int = 0) -> bytes:
     """Pack one channel of one pattern into PT3 bytes.
 
     `rows` is a list of cells, one per row: REST (hold/empty), OFF (note cut),
     a note (PT3 name str or byte int), or a (note, opts) tuple where opts may
-    carry 'vol', 'ornament', 'sample', 'env'. 'env' is (shape 1..14, period) to
-    drive the row's note from the AY hardware envelope (buzzer bass), or 'off'
-    to stop using it. Trailing rests after an event extend its NtSkip; leading
-    rests are dropped (anchor row 0, see module docstring)."""
+    carry 'vol' (1..15), 'ornament', 'sample', 'env'. 'env' is (shape 1..14,
+    period) to drive the row's note from the AY hardware envelope (buzzer
+    bass), or 'off' to stop using it. Trailing rests after an event extend its
+    NtSkip; leading rests are dropped (anchor row 0, see module docstring)."""
     out = bytearray()
+    _check_volume(default_volume)
     cur_sample = default_sample
     cur_volume = default_volume
     cur_ornament = ornament
@@ -115,8 +126,8 @@ def encode_channel(rows: list, default_sample: int = 1,
         desired_skip = 1 + rest_after
 
         if 'vol' in opts and opts['vol'] != cur_volume:
-            cur_volume = opts['vol']
-            out.append(0xC0 | (cur_volume & 0x0F))
+            cur_volume = _check_volume(opts['vol'])
+            out.append(0xC0 | cur_volume)
             initial_volume_emitted = True
         if 'ornament' in opts and opts['ornament'] != cur_ornament:
             cur_ornament = opts['ornament']
@@ -141,7 +152,7 @@ def encode_channel(rows: list, default_sample: int = 1,
                 out.append(period & 0xFF)              # period low byte
 
         if not initial_volume_emitted:
-            out.append(0xC0 | (default_volume & 0x0F))
+            out.append(0xC0 | default_volume)
             initial_volume_emitted = True
 
         if desired_skip != cur_skip:

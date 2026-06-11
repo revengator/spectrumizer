@@ -14,9 +14,12 @@ LICENCE_REMINDER = (
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from . import __version__
     p = argparse.ArgumentParser(
         prog="spectrumizer",
         description="Generate ZX Spectrum AY (PT3) music from a MIDI source.")
+    p.add_argument("--version", action="version",
+                   version=f"%(prog)s {__version__}")
     p.add_argument("input", help="input .mid / .midi file")
     p.add_argument("-o", "--output", help="output .pt3 (default: input with .pt3)")
     p.add_argument("--style", choices=["faithful", "chiptune"], default="faithful",
@@ -116,8 +119,11 @@ def main(argv: list[str] | None = None) -> int:
         if stats['transpose'] or stats['auto_transpose']:
             trans = (f"transpose={stats['transpose']:+d}"
                      + ("(auto)" if stats['auto_transpose'] else "") + "  ")
+        tempo = f"tempo~{stats['effective_bpm']}bpm"
+        if abs(stats['effective_bpm'] - stats['tempo_bpm']) >= 1:
+            tempo += f" (source {stats['tempo_bpm']})"  # speed quantisation
         print(f"  style={stats['style']}  speed={stats['speed']}  "
-              f"tempo~{stats['tempo_bpm']}bpm  {trans}{pats}  "
+              f"{tempo}  {trans}{pats}  "
               f"bytes={stats['bytes']}")
         b_label = {'envelope': 'buzzer',
                    'envelope-tone': 'buzzer+tone'}.get(stats['bass'], 'bass')

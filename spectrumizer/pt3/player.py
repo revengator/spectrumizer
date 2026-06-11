@@ -77,6 +77,8 @@ class Module:
     ornaments: dict         # slot -> ParsedOrnament
     name: str = ""
     author: str = ""
+    tone_table: int = 1     # header 0x63; the audition synth renders table 1
+    unknown_tokens: frozenset = frozenset()  # tokens outside the decoded subset
 
 
 # --- the default timbres, parsed once so a header with addr 0 still plays ---
@@ -101,11 +103,17 @@ def _mixer(b1: int) -> tuple[bool, bool]:
 
 
 def parse_sample(data: bytes, addr: int) -> ParsedSample:
+    """Parse one sample. Bounds-clamped: a foreign/corrupt module whose data
+    runs past EOF yields the ticks that fit (never an IndexError)."""
+    if addr + 2 > len(data):
+        return _DEFAULT_SAMPLE_FALLBACK
     loop = data[addr]
     length = data[addr + 1] + 1
     ticks = []
     p = addr + 2
     for _ in range(length):
+        if p + 4 > len(data):
+            break
         b0, b1 = data[p], data[p + 1]
         tone_on, noise_on = _mixer(b1)
         noise_path = (b1 & 0x80) == 0     # bit7=0 -> this tick drives the noise period
@@ -118,26 +126,38 @@ def parse_sample(data: bytes, addr: int) -> ParsedSample:
         ticks.append((tone_on, noise_on, b1 & 0x0F, noise_path, noise_add, persist,
                       tone_add, tone_acc))
         p += 4
-    return ParsedSample(min(loop, length - 1), ticks)
+    if not ticks:
+        return _DEFAULT_SAMPLE_FALLBACK
+    return ParsedSample(min(loop, len(ticks) - 1), ticks)
 
 
 def parse_ornament(data: bytes, addr: int) -> ParsedOrnament:
+    """Parse one ornament. Bounds-clamped like `parse_sample`."""
+    if addr + 2 > len(data):
+        return _DEFAULT_ORNAMENT_FALLBACK
     loop = data[addr]
     length = data[addr + 1] + 1
     offs = []
     p = addr + 2
     for _ in range(length):
+        if p >= len(data):
+            break
         v = data[p]
         offs.append(v - 256 if v >= 128 else v)   # signed semitone offset
         p += 1
-    return ParsedOrnament(min(loop, length - 1), offs)
+    if not offs:
+        return _DEFAULT_ORNAMENT_FALLBACK
+    return ParsedOrnament(min(loop, len(offs) - 1), offs)
 
 
-def decode_channel(data: bytes, addr: int) -> list:
+def decode_channel(data: bytes, addr: int, unknown: set | None = None) -> list:
     """Decode one packed channel into a per-row list of RowEvent | None.
 
     Mirrors the token grammar emitted by `encode_channel`. A note/OFF event
     occupies `cur_skip` rows; the extra rows are None (held / silent).
+    Tokens outside that grammar (full Vortex modules: glissando, portamento,
+    PD_NOIS…) are skipped and reported into `unknown` — their operand bytes
+    are NOT consumed, so decoding such a module may also desync.
     """
     rows: list = []
     cur_sample, cur_orn, cur_vol, cur_skip = 1, 0, 15, 1
@@ -151,6 +171,8 @@ def decode_channel(data: bytes, addr: int) -> list:
             break
         if 0xF0 <= b <= 0xFF:               # first-note preamble (orn + sample*2)
             cur_orn = b & 0x0F
+            if i >= n:                      # truncated operand (foreign module)
+                break
             cur_sample = data[i] // 2; i += 1
             continue
         if 0xD0 <= b <= 0xEF:               # sample change (token = 0xD0 + slot;
@@ -163,10 +185,14 @@ def decode_channel(data: bytes, addr: int) -> list:
             cur_env, cur_env_retrig = None, True
             continue
         if b == 0xB1:                       # NtSkip change
+            if i >= n:                      # truncated operand (foreign module)
+                break
             cur_skip = data[i]; i += 1
             continue
         if 0xB2 <= b <= 0xBF:               # set envelope: shape + period (hi, lo)
             shape = b - 0xB1                # 1..14 (0xB0 is OFF, 0xB1 is NtSkip)
+            if i + 1 >= n:                  # truncated operand (foreign module)
+                break
             period = (data[i] << 8) | data[i + 1]; i += 2
             cur_env, cur_env_retrig = (shape, period), True
             continue
@@ -185,14 +211,23 @@ def decode_channel(data: bytes, addr: int) -> list:
             rows.extend([None] * (cur_skip - 1))
             cur_env_retrig = False
             continue
-        # any other token: ignore (no time cost)
+        # any other token: ignore (no time cost), but report it
+        if unknown is not None:
+            unknown.add(b)
     return rows
 
 
 def parse_module(data: bytes) -> Module:
-    """Parse a spectrumizer-generated PT3 module into a playable `Module`."""
-    if data[:13] != b'ProTracker 3.':
-        raise ValueError("not a ProTracker 3 module")
+    """Parse a spectrumizer-generated PT3 module into a playable `Module`.
+
+    Vortex Tracker saves the same fixed-offset header under its own 30-byte
+    banner (the real player never reads the text), so both signatures are
+    accepted; foreign content is then reported via `unknown_tokens`.
+    """
+    if len(data) < 0xC9 or not (data[:13] == b'ProTracker 3.'
+                                or data[:17] == b'Vortex Tracker II'):
+        raise ValueError("not a ProTracker 3 / Vortex Tracker module")
+    tone_table = data[0x63]
     speed = data[0x64] or 6
     loop_pos = data[0x66]
     ppt_off = _u16(data, 0x67)
@@ -216,16 +251,21 @@ def parse_module(data: bytes) -> Module:
 
     n_pat = (max(order) + 1) if order else 0
     patterns = []
+    unknown: set = set()
     for idx in range(n_pat):
         base = ppt_off + idx * 6
+        if base + 6 > len(data):            # pointer table past EOF (corrupt)
+            patterns.append(([], [], []))
+            continue
         a, b, c = _u16(data, base), _u16(data, base + 2), _u16(data, base + 4)
-        patterns.append((decode_channel(data, a),
-                         decode_channel(data, b),
-                         decode_channel(data, c)))
+        patterns.append((decode_channel(data, a, unknown),
+                         decode_channel(data, b, unknown),
+                         decode_channel(data, c, unknown)))
 
     name = data[0x1E:0x3E].decode('ascii', 'replace').rstrip()
     author = data[0x42:0x62].decode('ascii', 'replace').rstrip()
-    return Module(speed, loop_pos, order, patterns, samples, ornaments, name, author)
+    return Module(speed, loop_pos, order, patterns, samples, ornaments,
+                  name, author, tone_table, frozenset(unknown))
 
 
 @dataclass

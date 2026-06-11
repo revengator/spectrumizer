@@ -167,7 +167,9 @@ The synth (`spectrumizer/audio.py`) plus the PT3 interpreter
 (`spectrumizer/pt3/player.py`, the inverse of the encoder) only implement the
 subset of PT3 this tool emits — notes, OFF, sample/ornament/volume, NtSkip, and
 the **AY hardware envelope** (all 16 R13 shapes, so buzzer-bass modules audition
-too). Pitch uses the **exact PT3 tone table** (the table-1 periods from the real Bulba player,
+too). Pointing it at a foreign module (full Vortex Tracker output) is detected,
+not silent: it warns about tokens outside that subset and about a non-default
+tone table. Pitch uses the **exact PT3 tone table** (the table-1 periods from the real Bulba player,
 so notes land where the chip puts them; pass `--tuning equal` for the old
 equal-tempered approximation). Treat it as a faithful **audition**, not a
 cycle-exact emulation — for the real chip, package the `.pt3` for an emulator

@@ -13,9 +13,12 @@ import sys
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from . import __version__
     p = argparse.ArgumentParser(
         prog="spectrumizer-play",
         description="Render and listen to a spectrumizer PT3 module (AY -> WAV).")
+    p.add_argument("--version", action="version",
+                   version=f"%(prog)s {__version__}")
     p.add_argument("input", help="input .pt3 module")
     p.add_argument("-o", "--output",
                    help="output .wav (default: input with .wav)")
@@ -60,6 +63,19 @@ def main(argv: list[str] | None = None) -> int:
     except ValueError as e:
         print(f"spectrumizer-play: {e}", file=sys.stderr)
         return 1
+
+    # The audition path decodes the subset spectrumizer emits; be upfront when
+    # a foreign module (full Vortex Tracker output) steps outside it.
+    if module.unknown_tokens:
+        toks = " ".join(f"0x{t:02X}" for t in sorted(module.unknown_tokens))
+        print("spectrumizer-play: warning: module uses PT3 tokens outside the "
+              f"audition subset ({toks}); they are skipped, so effects "
+              "(slides, noise commands…) are lost and decoding may desync.",
+              file=sys.stderr)
+    if module.tone_table != 1:
+        print("spectrumizer-play: warning: module asks for tone table "
+              f"{module.tone_table}; the audition synth renders table 1, so "
+              "absolute pitch may differ.", file=sys.stderr)
 
     out = args.output or (os.path.splitext(args.input)[0] + ".wav")
     pcm, channels = audio.render_pcm(

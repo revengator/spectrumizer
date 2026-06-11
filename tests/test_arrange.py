@@ -433,3 +433,18 @@ def test_vibrato_swaps_the_lead_sample():
     c_evs = [ev for ev in parse_module(eco).patterns[0][2]
              if ev is not None and ev.note is not None]
     assert c_evs and all(ev.sample == S_LEAD_VIB for ev in c_evs)
+
+
+def test_stats_report_the_quantised_effective_tempo():
+    # 110 bpm at 4 rows/beat wants 6.8 frames/row; the 50 Hz player only does
+    # whole frames, so speed 7 really plays 3000/(7*4) = 107.1 bpm.
+    song = _chord_song()
+    song.tempo_bpm = 110.0
+    _, stats = arrange(song)
+    assert stats['speed'] == 7
+    assert stats['tempo_bpm'] == 110.0
+    assert stats['effective_bpm'] == 107.1
+    # a tempo that divides 3000 exactly stays exact
+    song.tempo_bpm = 125.0
+    _, stats = arrange(song)
+    assert stats['effective_bpm'] == 125.0 == stats['tempo_bpm']

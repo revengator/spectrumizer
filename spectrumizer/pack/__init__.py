@@ -366,9 +366,12 @@ def pack(pt3_path: str, *, tap: str | None = None, sna: str | None = None,
 
 
 def main(argv: list[str] | None = None) -> int:
+    from .. import __version__
     p = argparse.ArgumentParser(
         prog="spectrumizer-pack",
         description="Wrap a .pt3 into a self-playing ZX Spectrum tape / snapshot.")
+    p.add_argument("--version", action="version",
+                   version=f"%(prog)s {__version__}")
     p.add_argument("input", help="input .pt3 module")
     p.add_argument("-o", "--output",
                    help="output file; .tap or .sna is chosen by its extension "

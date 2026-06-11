@@ -272,6 +272,9 @@ def arrange(song: Song, *, style: str = 'faithful', rows_per_beat: int = 4,
         'patterns': len(unique),
         'positions': len(order),
         'tempo_bpm': round(song.tempo_bpm, 1),
+        # what the 50 Hz player actually plays: speed is whole frames/row, so
+        # the real tempo is quantised (3000 = 50 frames/s * 60 s/min)
+        'effective_bpm': round(3000.0 / (speed_v * rows_per_beat), 1),
         'voices': {'lead': len(lead), 'bass': len(bass_line),
                    'channel_c': c_kind,
                    'harmony': (len(harmony)
